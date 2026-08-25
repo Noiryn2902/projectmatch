@@ -188,60 +188,95 @@ export default function TeamBuilder({
 
   if (!started) {
     return (
-      <div className="grid min-h-screen place-items-center px-5 py-12">
-        <div className="pm-in w-full max-w-[620px]">
-          <h1 className="text-center font-display text-[30px] leading-tight font-bold tracking-tight sm:text-[38px]">
-            Project<span className="text-accent">Match</span>
-          </h1>
-          <p className="mx-auto mt-3 max-w-[470px] text-center text-[15px] leading-relaxed text-muted">
-            Describe your project. Get a complete team back, with a clear account of what that
-            team still lacks.
-          </p>
+      <div className="pm-grain relative min-h-screen overflow-hidden">
+        <div className="pm-vignette absolute inset-0">
+          {/* Poster carries the frame on its own, so the page is complete
+              before the clip loads and stays complete if it never does. */}
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/media/hero.webp"
+            aria-hidden="true"
+            className="h-full w-full scale-105 object-cover opacity-80"
+          >
+            <source src="/media/hero.mp4" type="video/mp4" />
+          </video>
+        </div>
 
-          <div className="mt-7 rounded-2xl border border-line bg-panel p-2 focus-within:border-accent">
-            <textarea
-              rows={4}
-              autoFocus
-              value={briefText}
-              onChange={(e) => {
-                setBriefText(e.target.value);
-                if (error) setError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) analyze();
-              }}
-              placeholder="What are you building, roughly how long, and anything that has to be true when it is done."
-              aria-label="Describe your project"
-              className="w-full resize-none bg-transparent p-3 text-[15px] leading-relaxed outline-none placeholder:text-faint"
-            />
-            <div className="flex items-center justify-between gap-3 px-2 pb-1">
-              <span className="text-[11px] text-faint">
-                {briefText.trim().length > 0 ? 'Ctrl + Enter to submit' : 'No account required'}
-              </span>
-              <button
-                type="button"
-                onClick={analyze}
-                disabled={analyzing}
-                className="rounded-xl bg-accent px-5 py-2.5 text-[14px] font-medium text-panel transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {analyzing ? 'Analysing brief…' : 'Build my team'}
-              </button>
+        <div className="relative grid min-h-screen place-items-center px-5 py-14">
+          <div className="w-full max-w-[640px]">
+            <p className="pm-rise pm-d1 text-center text-[11px] tracking-[0.22em] text-accent uppercase">
+              Team formation
+            </p>
+
+            <h1 className="pm-rise pm-d2 mt-4 text-center font-display text-[34px] leading-[1.05] font-bold tracking-tight sm:text-[46px]">
+              Describe the project.
+              <br />
+              <span className="text-accent">Get the team.</span>
+            </h1>
+
+            <p className="pm-rise pm-d3 mx-auto mt-5 max-w-[440px] text-center text-[15px] leading-relaxed text-muted">
+              Scored on what each person adds to the team, not how good they look alone. With an
+              honest account of what the team still lacks.
+            </p>
+
+            <div className="pm-rise pm-d4 mt-9">
+              <div className="rounded-2xl border border-line-strong bg-panel/80 p-2 backdrop-blur-md transition-colors focus-within:border-accent">
+                <textarea
+                  rows={4}
+                  autoFocus
+                  value={briefText}
+                  onChange={(e) => {
+                    setBriefText(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) analyze();
+                  }}
+                  placeholder="What are you building, roughly how long, and anything that has to be true when it is done."
+                  aria-label="Describe your project"
+                  className="w-full resize-none bg-transparent p-3 text-[15px] leading-relaxed outline-none placeholder:text-faint"
+                />
+                <div className="flex items-center justify-between gap-3 px-2 pb-1">
+                  <span className="text-[11px] text-faint">
+                    {briefText.trim().length > 0 ? 'Ctrl + Enter to submit' : 'No account required'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={analyze}
+                    disabled={analyzing}
+                    className="relative overflow-hidden rounded-xl bg-accent px-5 py-2.5 text-[14px] font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-60"
+                  >
+                    {analyzing && (
+                      <span
+                        aria-hidden
+                        className="pm-sweep absolute inset-0 bg-gradient-to-r from-transparent via-white/35 to-transparent"
+                      />
+                    )}
+                    <span className="relative">
+                      {analyzing ? 'Analysing brief…' : 'Build my team'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <p role="alert" className="mt-3 text-center text-[13px] text-warn">
+                  {error}
+                </p>
+              )}
             </div>
           </div>
-
-          {error && (
-            <p role="alert" className="mt-3 text-center text-[13px] text-warn">
-              {error}
-            </p>
-          )}
-
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="pm-grain min-h-screen">
       <header className="sticky top-0 z-20 border-b border-line bg-canvas/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1180px] items-center gap-3 px-5 py-3 sm:gap-6">
           <button
