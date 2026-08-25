@@ -561,7 +561,7 @@ export default function TeamBuilder({
               </div>
             ) : (
               <div>
-                <ul className="grid gap-3 sm:grid-cols-2">
+                <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {candidates.slice(0, 20).map((c, i) => {
                     // The rationale belongs to the top-ranked candidate and sits
                     // inside their card, rather than repeating it in a banner above.
