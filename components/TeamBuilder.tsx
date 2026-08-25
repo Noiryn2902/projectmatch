@@ -10,6 +10,10 @@ import TeamPanel from './TeamPanel';
 import Filters from './Filters';
 import PersonDetail from './PersonDetail';
 import Proof from './Proof';
+import Stats from './Stats';
+import HowItWorks from './HowItWorks';
+import Difference from './Difference';
+import Reveal from './Reveal';
 
 const SORTS: { id: SortMode; label: string }[] = [
   { id: 'bestFit', label: 'Best fit for this team' },
@@ -296,9 +300,49 @@ export default function TeamBuilder({
         </div>
         </div>
 
+        <Stats
+          people={people.length}
+          companies={companies.length}
+          offices={new Set(people.map((p) => p.office)).size}
+          skills={82}
+          timezones={new Set(people.map((p) => p.utcOffset)).size}
+        />
+
+        <HowItWorks />
+
+        <Difference people={people} />
+
         <div className="border-t border-line bg-canvas">
           <Proof people={people} companies={companies} />
         </div>
+
+        <div className="border-t border-line">
+          <div className="mx-auto max-w-[1180px] px-5 py-20 text-center">
+            <Reveal>
+              <h2 className="font-display text-[26px] leading-tight font-bold tracking-tight sm:text-[34px]">
+                Describe the project. Get the team.
+              </h2>
+              <p className="mx-auto mt-3 max-w-[440px] text-[14px] leading-relaxed text-muted">
+                No account, no database, nothing to install. Two lines is enough.
+              </p>
+              <button
+                type="button"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="mt-7 rounded-xl bg-accent px-6 py-3 text-[14px] font-medium text-canvas transition-opacity hover:opacity-90"
+              >
+                Start at the top
+              </button>
+            </Reveal>
+          </div>
+        </div>
+
+        <footer className="border-t border-line">
+          <div className="mx-auto max-w-[1180px] px-5 py-8 text-[11px] leading-relaxed text-faint">
+            ProjectMatch. All profiles are generated and fictional. Matching runs locally in the
+            browser on deterministic scoring; Gemini reads the brief and writes the rationale, and
+            does not select the team.
+          </div>
+        </footer>
       </div>
     );
   }
