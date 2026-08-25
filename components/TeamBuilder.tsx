@@ -200,7 +200,7 @@ export default function TeamBuilder({
             preload="metadata"
             poster="/media/hero.webp"
             aria-hidden="true"
-            className="h-full w-full scale-105 object-cover opacity-85"
+            className="h-full w-full scale-105 object-cover opacity-90"
           >
             <source src="/media/hero.mp4" type="video/mp4" />
           </video>
@@ -212,7 +212,7 @@ export default function TeamBuilder({
             className="absolute inset-0"
             style={{
               background:
-                'radial-gradient(56% 34% at 50% 43%, rgba(6,9,16,0.95) 0%, rgba(6,9,16,0.90) 55%, rgba(6,9,16,0.50) 82%, rgba(6,9,16,0) 100%)',
+                'radial-gradient(58% 36% at 50% 43%, rgba(6,9,16,0.60) 0%, rgba(6,9,16,0.44) 55%, rgba(6,9,16,0.16) 82%, rgba(6,9,16,0) 100%)',
             }}
           />
           <div
@@ -220,7 +220,7 @@ export default function TeamBuilder({
             className="absolute inset-0"
             style={{
               background:
-                'linear-gradient(to bottom, rgba(6,9,16,0.55) 0%, rgba(6,9,16,0.18) 25%, rgba(6,9,16,0.18) 55%, rgba(6,9,16,0.72) 86%, rgba(6,9,16,0.97) 100%)',
+                'linear-gradient(to bottom, rgba(6,9,16,0.42) 0%, rgba(6,9,16,0.05) 26%, rgba(6,9,16,0.05) 58%, rgba(6,9,16,0.58) 88%, rgba(6,9,16,0.94) 100%)',
             }}
           />
         </div>
@@ -231,13 +231,13 @@ export default function TeamBuilder({
               Team formation
             </p>
 
-            <h1 className="pm-rise pm-d2 pm-legible mt-4 text-center font-display text-[34px] leading-[1.05] font-bold tracking-tight sm:text-[46px]">
+            <h1 className="pm-rise pm-d2 pm-legible mt-4 text-center font-display text-[34px] leading-[1.05] font-bold tracking-tight text-white sm:text-[46px]">
               Describe the project.
               <br />
               <span className="text-accent">Get the team.</span>
             </h1>
 
-            <p className="pm-rise pm-d3 pm-legible mx-auto mt-5 max-w-[460px] text-center text-[15px] leading-relaxed text-ink/85">
+            <p className="pm-rise pm-d3 pm-legible mx-auto mt-5 max-w-[460px] text-center text-[15px] leading-relaxed font-medium text-white">
               Scored on what each person adds to the team, not how good they look alone. With an
               honest account of what the team still lacks.
             </p>
