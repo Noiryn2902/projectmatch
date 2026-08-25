@@ -40,6 +40,7 @@ export interface Person {
   hoursPerWeek: number;
   contact: Contact;
   openToProjects: boolean;
+  photo?: string;
   hue: number;
 }
 

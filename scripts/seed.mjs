@@ -1,4 +1,5 @@
-import { writeFileSync, mkdirSync } from 'node:fs';
+import fs from 'node:fs';
+const { writeFileSync, mkdirSync } = fs;
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -128,6 +129,13 @@ const LEVEL_PREFIX = ['Junior ', '', 'Senior ', 'Staff ', 'Principal '];
 const FIRST = ['Priya', 'Daniel', 'Mei', 'Tomas', 'Aisha', 'Rohan', 'Elena', 'Kofi', 'Sanne', 'Yuki', 'Lucas', 'Nadia', 'Omar', 'Grace', 'Ivan', 'Leila', 'Marcus', 'Ana', 'Ravi', 'Sofia', 'Tunde', 'Hannah', 'Jae', 'Farah', 'Diego', 'Nina', 'Arjun', 'Clara', 'Samuel', 'Mira', 'Noah', 'Zara', 'Felix', 'Ingrid', 'Hassan', 'Bea', 'Theo', 'Anika', 'Paulo', 'Wei', 'Esther', 'Karim', 'Lena', 'Sunil', 'Maya', 'Jonas', 'Amara', 'Victor', 'Rania', 'Oscar', 'Divya', 'Milan', 'Nour', 'Kenji', 'Iris', 'Bruno', 'Tara', 'Emeka', 'Sara', 'Levi'];
 const LAST = ['Raman', 'Okafor', 'Lin', 'Novak', 'Bello', 'Mehta', 'Costa', 'Mensah', 'Visser', 'Tanaka', 'Almeida', 'Haddad', 'Farouk', 'Adeyemi', 'Petrov', 'Barakat', 'Webb', 'Duarte', 'Krishnan', 'Moretti', 'Balogun', 'Weiss', 'Park', 'Nasser', 'Ortega', 'Volkov', 'Nair', 'Lindqvist', 'Owusu', 'Sen', 'Bergman', 'Khalil', 'Brandt', 'Solberg', 'Rahman', 'Fontaine', 'Marek', 'Iyer', 'Ribeiro', 'Zhang', 'Mwangi', 'Aziz', 'Hoffmann', 'Pillai', 'Devi', 'Larsen', 'Diallo', 'Silva', 'Kassab', 'Lundqvist'];
 
+// One avatar file per generated portrait. People beyond that count fall back
+// to initials, which is what a real directory looks like anyway.
+const PHOTOS = fs.existsSync(join(OUT,'..','..','public','media','people'))
+  ? fs.readdirSync(join(OUT,'..','..','public','media','people')).filter((f) => f.endsWith('.webp'))
+  : [];
+const PHOTO_COUNT = PHOTOS.length;
+
 const usedNames = new Set();
 const people = [];
 
@@ -178,6 +186,7 @@ for (let i = 0; i < 60; i++) {
       github: rnd() > 0.45 ? 'github.com/' + parts[0] + parts[1][0] : undefined,
     },
     openToProjects: rnd() > 0.12,
+    photo: i < PHOTO_COUNT ? PHOTOS[i] : undefined,
     hue: Math.floor(rnd() * 360),
   });
 }

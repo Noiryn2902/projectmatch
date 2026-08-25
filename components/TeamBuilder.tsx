@@ -8,6 +8,8 @@ import { labelOf, sim } from '@/lib/engine/graph';
 import PersonCard from './PersonCard';
 import TeamPanel from './TeamPanel';
 import Filters from './Filters';
+import PersonDetail from './PersonDetail';
+import Proof from './Proof';
 
 const SORTS: { id: SortMode; label: string }[] = [
   { id: 'bestFit', label: 'Best fit for this team' },
@@ -47,6 +49,7 @@ export default function TeamBuilder({
   const [minHours, setMinHours] = useState(0);
   const [seniority, setSeniority] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
+  const [exploring, setExploring] = useState<string | null>(null);
 
   const [team, setTeam] = useState<TeamState>(() =>
     autoFill(initialBrief, people, { companyId: null, office: null }),
@@ -188,7 +191,8 @@ export default function TeamBuilder({
 
   if (!started) {
     return (
-      <div className="pm-grain relative min-h-screen overflow-hidden">
+      <div className="pm-grain">
+        <div className="relative min-h-screen overflow-hidden">
         <div className="absolute inset-0">
           {/* Poster carries the frame on its own, so the page is complete
               before the clip loads and stays complete if it never does. */}
@@ -289,6 +293,11 @@ export default function TeamBuilder({
               )}
             </div>
           </div>
+        </div>
+        </div>
+
+        <div className="border-t border-line bg-canvas">
+          <Proof />
         </div>
       </div>
     );
@@ -494,6 +503,7 @@ export default function TeamBuilder({
                         companyName={companyName(c.person.companyId)}
                         seated={team[activeRole.id] === c.person.id}
                         onToggle={() => toggle(c.person.id)}
+                        onExplore={() => setExploring(c.person.id)}
                         rationale={isTop ? reason : null}
                         rationaleLoading={isTop && reasonLoading}
                       />
@@ -510,6 +520,22 @@ export default function TeamBuilder({
             )}
           </section>
         </div>
+
+        {exploring &&
+          (() => {
+            const c = candidates.find((x) => x.person.id === exploring);
+            if (!c || !activeRole) return null;
+            return (
+              <PersonDetail
+                candidate={c}
+                role={activeRole}
+                companyName={companyName(c.person.companyId)}
+                seated={team[activeRole.id] === c.person.id}
+                onToggle={() => toggle(c.person.id)}
+                onClose={() => setExploring(null)}
+              />
+            );
+          })()}
 
         <footer className="mt-12 border-t border-line pt-4 text-[11px] leading-relaxed text-faint">
           All profiles are generated and fictional. Matching runs locally in the browser on

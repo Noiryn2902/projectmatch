@@ -1,11 +1,7 @@
 'use client';
 
 import type { Brief, Person, TeamHealth, TeamState } from '@/lib/types';
-
-function initials(name: string) {
-  const p = name.split(' ');
-  return (p[0][0] + (p[1]?.[0] ?? '')).toUpperCase();
-}
+import Avatar from './Avatar';
 
 export default function TeamPanel({
   brief,
@@ -75,16 +71,7 @@ export default function TeamPanel({
                     aria-current={active ? 'true' : undefined}
                   >
                     {person ? (
-                      <span
-                        aria-hidden
-                        className="grid size-7 shrink-0 place-items-center rounded-full text-[10px] font-semibold"
-                        style={{
-                          background: `oklch(0.88 0.07 ${person.hue})`,
-                          color: `oklch(0.32 0.09 ${person.hue})`,
-                        }}
-                      >
-                        {initials(person.name)}
-                      </span>
+                      <Avatar person={person} size={28} />
                     ) : (
                       <span
                         aria-hidden

@@ -3,11 +3,7 @@
 import type { Candidate } from '@/lib/engine/assemble';
 import type { Role } from '@/lib/types';
 import { labelOf, sim } from '@/lib/engine/graph';
-
-function initials(name: string) {
-  const p = name.split(' ');
-  return (p[0][0] + (p[1]?.[0] ?? '')).toUpperCase();
-}
+import Avatar from './Avatar';
 
 export default function PersonCard({
   candidate,
@@ -15,6 +11,7 @@ export default function PersonCard({
   companyName,
   seated,
   onToggle,
+  onExplore,
   rationale,
   rationaleLoading,
 }: {
@@ -23,6 +20,7 @@ export default function PersonCard({
   companyName: string;
   seated: boolean;
   onToggle: () => void;
+  onExplore: () => void;
   rationale?: string | null;
   rationaleLoading?: boolean;
 }) {
@@ -44,16 +42,7 @@ export default function PersonCard({
       }`}
     >
       <div className="flex items-start gap-4">
-        <div
-          aria-hidden
-          className="grid size-10 shrink-0 place-items-center rounded-full text-[13px] font-semibold"
-          style={{
-            background: `oklch(0.88 0.07 ${person.hue})`,
-            color: `oklch(0.32 0.09 ${person.hue})`,
-          }}
-        >
-          {initials(person.name)}
-        </div>
+        <Avatar person={person} size={44} />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
@@ -129,6 +118,13 @@ export default function PersonCard({
               >
                 LinkedIn
               </a>
+              <button
+                type="button"
+                onClick={onExplore}
+                className="rounded-lg border border-line px-3 py-1.5 text-[13px] text-muted transition-colors hover:border-line-strong hover:text-ink"
+              >
+                Explore
+              </button>
               <button
                 type="button"
                 onClick={onToggle}
