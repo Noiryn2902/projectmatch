@@ -13,6 +13,7 @@ export default function TeamPanel({
   onClear,
   onAutoFill,
   busy,
+  onFindCover,
 }: {
   brief: Brief;
   team: TeamState;
@@ -23,6 +24,7 @@ export default function TeamPanel({
   onClear: (roleId: string) => void;
   onAutoFill: () => void;
   busy: boolean;
+  onFindCover?: (label: string) => void;
 }) {
   const byId = new Map(pool.map((p) => [p.id, p]));
   const pct = Math.round(health.coverage * 100);
@@ -137,7 +139,9 @@ export default function TeamPanel({
               <circle cx="19" cy="12" r="2.4" />
               <path d="M7 6.6c4 1.2 6.5 2.9 9.8 4.6M7 17.4c4-1.2 6.5-2.9 9.8-4.6" />
             </svg>
-            <span className="relative">{busy ? 'Assembling…' : 'Assemble the team'}</span>
+            <span className="relative">
+              {busy ? 'Assembling…' : health.filled === 0 ? 'Assemble the team' : 'Rebuild the team'}
+            </span>
           </button>
 
           {health.filled === 0 && !busy && (
@@ -149,30 +153,39 @@ export default function TeamPanel({
         </div>
       </section>
 
-      <section className="rounded-xl border border-line bg-panel px-4 py-3.5">
+      <section className="rounded-xl border border-line border-l-2 border-l-accent bg-panel px-4 py-3.5">
         <h3 className="text-[13px] font-medium">
-          {health.gaps.length > 0 ? 'Coverage gaps' : 'No gaps detected'}
+          {health.gaps.length > 0 ? 'Still uncovered' : 'No gaps detected'}
         </h3>
         {health.gaps.length === 0 ? (
           <p className="mt-2 text-[12px] text-faint">
             Every requirement is covered and availability aligns.
           </p>
         ) : (
-          <ul className="mt-2.5 space-y-2">
-            {health.gaps.map((g) => (
-              <li key={g.label} className="flex gap-2.5 text-[12px]">
-                <span
-                  aria-hidden
-                  className={`mt-1.5 size-1.5 shrink-0 rounded-full ${
-                    g.severity === 'high' ? 'bg-warn' : 'bg-line-strong'
+          <>
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {health.gaps.map((g) => (
+                <button
+                  key={g.label}
+                  type="button"
+                  onClick={() => onFindCover?.(g.label)}
+                  className={`rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
+                    g.severity === 'high'
+                      ? 'border-warn/40 bg-warn-soft text-warn hover:border-warn'
+                      : 'border-accent/40 bg-accent-soft text-accent hover:border-accent'
                   }`}
-                />
-                <span className={g.severity === 'high' ? 'text-warn' : 'text-muted'}>{g.label}</span>
-              </li>
-            ))}
-          </ul>
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2.5 text-[11px] text-faint">
+              Click a gap to find someone who covers it.
+            </p>
+          </>
         )}
       </section>
+
     </div>
   );
 }

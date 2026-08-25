@@ -233,3 +233,10 @@ body {
     filter: none;
   }
 }
+
+/* In-page nav links jump to sections; ease them rather than teleporting. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}

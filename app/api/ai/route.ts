@@ -213,5 +213,52 @@ export async function POST(request: Request) {
     });
   }
 
+  if (action === 'assistant') {
+    const question = String(payload?.question ?? '').slice(0, 500);
+    const briefText = String(payload?.brief ?? '');
+    const roster = String(payload?.roster ?? '');
+    const gaps = String(payload?.gaps ?? 'none');
+    const coverage = Number(payload?.coverage ?? 0);
+
+    const prompt = [
+      'You are the project assistant inside a team workspace chat.',
+      'Answer the question using only the facts below. Never invent people or skills.',
+      '',
+      `Project brief: ${briefText}`,
+      `Team: ${roster}`,
+      `Uncovered requirements: ${gaps}`,
+      `Requirement coverage: ${coverage}%`,
+      '',
+      `Question: ${question}`,
+      '',
+      'Requirements:',
+      '- 2 to 4 sentences, plain professional register, addressed to the person who asked.',
+      '- Be concrete and specific to this team. Name people and skills directly.',
+      '- Write figures as numerals and use the % symbol, never the word percent.',
+      '- If the facts above do not answer it, say so plainly rather than guessing.',
+      '- Never use: leverage, robust, seamless, passionate, exceptional, invaluable.',
+      '- Refer to any team member as they, never he or she.',
+    ].join('\n');
+
+    const result = await generateJson<{ reason: string }>(prompt, REASON_SCHEMA);
+
+    if (result?.data?.reason) {
+      return NextResponse.json({
+        ok: true,
+        data: { reply: result.data.reason.trim() },
+        source: result.model,
+      });
+    }
+
+    // Deterministic answer so the chat never dead-ends when the API is down.
+    const parts = [
+      gaps !== 'none'
+        ? `Still uncovered: ${gaps}.`
+        : 'Every requirement currently has someone covering it.',
+      `The team covers ${coverage}% of the brief's requirements.`,
+    ];
+    return NextResponse.json({ ok: true, data: { reply: parts.join(' ') }, source: 'fallback' });
+  }
+
   return NextResponse.json({ ok: false, error: 'Unknown action.' }, { status: 400 });
 }

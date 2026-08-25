@@ -18,6 +18,8 @@ import Categories from './Categories';
 import BigCta from './BigCta';
 import SiteFooter from './SiteFooter';
 import Directory from './Directory';
+import SiteNav from './SiteNav';
+import Workspace from './Workspace';
 
 const SORTS: { id: SortMode; label: string }[] = [
   { id: 'bestFit', label: 'Best fit for this team' },
@@ -59,6 +61,7 @@ export default function TeamBuilder({
   const [busy, setBusy] = useState(false);
   const [exploring, setExploring] = useState<string | null>(null);
   const [browsing, setBrowsing] = useState<{ id: string; label: string } | null>(null);
+  const [locked, setLocked] = useState(false);
 
   const [team, setTeam] = useState<TeamState>(() =>
     Object.fromEntries(initialBrief.roles.map((r) => [r.id, null])),
@@ -214,7 +217,8 @@ export default function TeamBuilder({
   if (!started) {
     return (
       <div className="pm-grain">
-        <div className="relative min-h-screen overflow-hidden">
+        <SiteNav />
+        <div className="relative min-h-[calc(100svh-104px)] overflow-hidden">
         <div className="absolute inset-0">
           {/* Poster carries the frame on its own, so the page is complete
               before the clip loads and stays complete if it never does. */}
@@ -251,7 +255,7 @@ export default function TeamBuilder({
           />
         </div>
 
-        <div className="relative grid min-h-screen place-items-center px-5 py-14">
+        <div className="relative grid min-h-[calc(100svh-104px)] place-items-center px-5 py-10">
           <div className="w-full max-w-[640px]">
             <p className="pm-rise pm-d1 pm-legible text-center text-[11px] tracking-[0.22em] text-accent uppercase">
               Team formation
@@ -343,9 +347,13 @@ export default function TeamBuilder({
           line="The person you need is usually one connection further away than you can see."
         />
 
+        <section id="how-it-works" className="scroll-mt-16">
         <HowItWorks />
+        </section>
 
+        <section id="for-teams" className="scroll-mt-16">
         <Difference people={people} />
+        </section>
 
         <Band
           src="/media/band-desk-2.webp"
@@ -375,6 +383,18 @@ export default function TeamBuilder({
     );
   }
 
+  if (locked) {
+    return (
+      <Workspace
+        brief={brief}
+        members={members}
+        roles={brief.roles}
+        health={health}
+        onBack={() => setLocked(false)}
+      />
+    );
+  }
+
   return (
     <div className="pm-grain min-h-screen">
       <header className="sticky top-0 z-20 border-b border-line bg-canvas/90 backdrop-blur">
@@ -398,20 +418,6 @@ export default function TeamBuilder({
               className="w-full rounded-full border border-line bg-panel px-4 py-2 text-[13px] outline-none transition-colors focus:border-accent"
             />
           </div>
-
-          <select
-            aria-label="Company scope"
-            value={scope.companyId ?? ''}
-            onChange={(e) => setScope({ companyId: e.target.value || null, office: null })}
-            className="shrink-0 rounded-lg border border-line bg-panel px-2.5 py-2 text-[12px]"
-          >
-            <option value="">Anywhere</option>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
 
         </div>
       </header>
@@ -506,6 +512,7 @@ export default function TeamBuilder({
               onClear={(roleId) => setTeam((t) => ({ ...t, [roleId]: null }))}
               onAutoFill={runAutoFill}
               busy={busy}
+              onFindCover={(label) => setSearch(label)}
             />
             <Filters
               companies={companies}
@@ -527,24 +534,10 @@ export default function TeamBuilder({
                 </h2>
                 <p className="mt-0.5 text-[12px] text-faint">
                   {candidates.length} {candidates.length === 1 ? 'candidate' : 'candidates'}
-                  {sort === 'bestFit' && ' · ranked by contribution to this team'}
+                  {' · ranked by what they add to this team'}
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value as SortMode)}
-                  className="rounded-lg border border-line bg-panel px-2.5 py-1.5 text-[12px]"
-                  aria-label="Sort candidates"
-                >
-                  {SORTS.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
 
             {candidates.length === 0 ? (
@@ -610,6 +603,28 @@ export default function TeamBuilder({
               />
             );
           })()}
+
+        <div className="mt-8 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-panel px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-[14px] font-medium">
+              {health.filled === health.seats
+                ? 'Every seat is filled.'
+                : `${health.seats - health.filled} of ${health.seats} seats still open.`}
+            </p>
+            <p className="mt-0.5 text-[12px] text-faint">
+              Locking opens the workspace: chat, contacts, and a kickoff time that works for
+              everyone.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLocked(true)}
+            disabled={health.filled === 0}
+            className="ml-auto rounded-xl bg-accent px-5 py-2.5 text-[14px] font-semibold text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            Lock in this team →
+          </button>
+        </div>
 
         <footer className="mt-12 border-t border-line pt-4 text-[11px] leading-relaxed text-faint">
           All profiles are generated and fictional. Matching runs locally in the browser on
