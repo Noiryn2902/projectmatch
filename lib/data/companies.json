@@ -1,0 +1,51 @@
+[
+  {
+    "id": "northwind",
+    "name": "Northwind Labs",
+    "offices": [
+      "Bengaluru",
+      "London",
+      "Austin"
+    ]
+  },
+  {
+    "id": "kestrel",
+    "name": "Kestrel Health",
+    "offices": [
+      "Berlin",
+      "Bengaluru"
+    ]
+  },
+  {
+    "id": "orbit",
+    "name": "Orbit Financial",
+    "offices": [
+      "Singapore",
+      "London"
+    ]
+  },
+  {
+    "id": "lumen",
+    "name": "Lumen Education",
+    "offices": [
+      "Toronto",
+      "Lagos"
+    ]
+  },
+  {
+    "id": "atlas",
+    "name": "Atlas Logistics",
+    "offices": [
+      "Rotterdam",
+      "Mumbai"
+    ]
+  },
+  {
+    "id": "verdant",
+    "name": "Verdant Climate",
+    "offices": [
+      "Nairobi",
+      "Copenhagen"
+    ]
+  }
+]
