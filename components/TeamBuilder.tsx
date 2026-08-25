@@ -17,8 +17,6 @@ const SORTS: { id: SortMode; label: string }[] = [
   { id: 'sameOffice', label: 'By office' },
 ];
 
-const EXAMPLE_LABELS = ['Support ticket reports', 'Nurse handover app', 'Carbon dashboard'];
-
 const EXAMPLES = [
   'Internal tool that turns customer support tickets into weekly theme reports. Roughly 6 weeks. It needs to actually ship, not stay a prototype.',
   'A mobile app that helps nurses hand over patient notes between shifts. Three months, hospital pilot first.',
@@ -237,35 +235,6 @@ export default function TeamBuilder({
             </p>
           )}
 
-          <div className="mt-6">
-            <p className="text-center text-[12px] text-faint">Or start from one of these</p>
-            <div className="mt-2.5 flex flex-wrap justify-center gap-2">
-              {EXAMPLES.map((ex, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setBriefText(ex)}
-                  className="max-w-full rounded-full border border-line px-3.5 py-1.5 text-[12px] text-muted transition-colors hover:border-accent hover:text-accent"
-                >
-                  {EXAMPLE_LABELS[i]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <p className="mt-9 text-center text-[12px] text-faint">
-            {people.length} people across {companies.length} companies ·{' '}
-            <button
-              type="button"
-              onClick={() => {
-                setBriefText(initialBrief.text);
-                setStarted(true);
-              }}
-              className="text-accent underline underline-offset-2"
-            >
-              skip to a worked example
-            </button>
-          </p>
         </div>
       </div>
     );
