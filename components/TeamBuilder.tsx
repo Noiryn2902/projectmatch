@@ -14,6 +14,7 @@ import Stats from './Stats';
 import HowItWorks from './HowItWorks';
 import Difference from './Difference';
 import Reveal from './Reveal';
+import Band from './Band';
 
 const SORTS: { id: SortMode; label: string }[] = [
   { id: 'bestFit', label: 'Best fit for this team' },
@@ -308,11 +309,23 @@ export default function TeamBuilder({
           timezones={new Set(people.map((p) => p.utcOffset)).size}
         />
 
+        <Band
+          src="/media/band-team.webp"
+          kicker="The problem"
+          line="The person you need is usually one connection further away than you can see."
+        />
+
         <HowItWorks />
 
         <Difference people={people} />
 
-        <div className="border-t border-line bg-canvas">
+        <Band
+          src="/media/band-desk.webp"
+          kicker="The cost"
+          line="Most teams find out what they were missing six weeks in, not on day one."
+        />
+
+        <div className="bg-canvas">
           <Proof people={people} companies={companies} />
         </div>
 
