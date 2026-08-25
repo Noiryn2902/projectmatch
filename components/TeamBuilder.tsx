@@ -68,6 +68,8 @@ export default function TeamBuilder({
   const [reason, setReason] = useState<string | null>(null);
   const [reasonLoading, setReasonLoading] = useState(false);
   const reasonCache = useRef(new Map<string, string>());
+  const briefRef = useRef<HTMLTextAreaElement>(null);
+  const [briefFocused, setBriefFocused] = useState(false);
 
   const companyName = useCallback(
     (id: string) => companies.find((c) => c.id === id)?.name ?? id,
@@ -182,6 +184,14 @@ export default function TeamBuilder({
     }
   }
 
+  // Start compact and grow to fit, so an empty box is not four rows of nothing.
+  useEffect(() => {
+    const el = briefRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+  }, [briefText, started]);
+
   function runAutoFill() {
     setBusy(true);
     requestAnimationFrame(() => {
@@ -256,23 +266,28 @@ export default function TeamBuilder({
             </p>
 
             <div className="pm-rise pm-d4 mt-9">
-              <div className="rounded-2xl border border-line-strong bg-panel/92 p-2 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.95)] backdrop-blur-xl transition-colors focus-within:border-accent">
+              <div
+                className={`pm-field rounded-2xl border bg-panel/92 p-3 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.95)] backdrop-blur-xl transition-colors ${briefFocused ? 'is-focused' : ''}`}
+              >
                 <textarea
-                  rows={4}
+                  ref={briefRef}
+                  rows={2}
                   autoFocus
                   value={briefText}
                   onChange={(e) => {
                     setBriefText(e.target.value);
                     if (error) setError(null);
                   }}
+                  onFocus={() => setBriefFocused(true)}
+                  onBlur={() => setBriefFocused(false)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) analyze();
                   }}
                   placeholder="What are you building, roughly how long, and anything that has to be true when it is done."
                   aria-label="Describe your project"
-                  className="w-full resize-none bg-transparent p-3 text-[15px] leading-relaxed outline-none placeholder:text-faint"
+                  className="w-full resize-none bg-transparent px-2 pt-1 text-[15px] leading-relaxed outline-none placeholder:text-faint"
                 />
-                <div className="flex items-center justify-between gap-3 px-2 pb-1">
+                <div className="mt-2 flex items-center justify-between gap-3 px-2">
                   <span className="text-[11px] text-faint">
                     {briefText.trim().length > 0 ? 'Ctrl + Enter to submit' : ''}
                   </span>

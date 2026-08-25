@@ -77,6 +77,29 @@ body {
   border-radius: 4px;
 }
 
+/* Own both border states outright. Setting borderColor inline is not an
+   option: assigning a shorthand containing var() through CSSOM is silently
+   dropped, which is exactly what was happening here. */
+.pm-field {
+  border-color: var(--line-strong);
+}
+/* Two routes to the same state on purpose: :focus-within needs no JS at
+   all, and the class covers anything that reaches the field without firing
+   focus-within. Either one alone is enough. */
+.pm-field:focus-within,
+.pm-field.is-focused {
+  border-color: var(--accent);
+}
+
+/* A field whose wrapper already shows focus must not draw a second ring
+   inside it, or the control reads as a box inside a box. */
+.pm-field textarea:focus,
+.pm-field textarea:focus-visible,
+.pm-field input:focus,
+.pm-field input:focus-visible {
+  outline: none;
+}
+
 /* Film grain. Fixed so it reads as an emulsion over the whole frame. */
 .pm-grain::after {
   content: '';
