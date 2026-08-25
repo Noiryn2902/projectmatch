@@ -21,6 +21,16 @@ export interface ChatMessage {
 type OnMessage = (m: ChatMessage, replay?: boolean) => void;
 type OnPresence = (online: Set<string> | null, typing?: string) => void;
 
+/** The slice of the Supabase realtime channel this file actually calls. */
+interface RealtimeChannelLike {
+  on: (...args: unknown[]) => RealtimeChannelLike;
+  subscribe: (cb?: (status: string) => void) => RealtimeChannelLike;
+  send: (payload: Record<string, unknown>) => Promise<unknown> | unknown;
+  track: (payload: Record<string, unknown>) => Promise<unknown> | unknown;
+  presenceState: () => Record<string, unknown>;
+  unsubscribe: () => Promise<unknown> | unknown;
+}
+
 interface SupabaseLike {
   from: (t: string) => {
     select: (c: string) => {
@@ -30,7 +40,7 @@ interface SupabaseLike {
     };
     insert: (row: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
   };
-  channel: (n: string, o?: unknown) => any;
+  channel: (n: string, o?: unknown) => RealtimeChannelLike;
 }
 
 export type LiveMode = 'supabase' | 'local';
@@ -38,7 +48,7 @@ export type LiveMode = 'supabase' | 'local';
 class LiveChat {
   mode: LiveMode = 'local';
   private sb: SupabaseLike | null = null;
-  private room: any = null;
+  private room: RealtimeChannelLike | null = null;
   private bc: BroadcastChannel | null = null;
 
   async init(onMessage: OnMessage, onPresence: OnPresence): Promise<LiveMode> {
@@ -62,7 +72,9 @@ class LiveChat {
           .limit(200);
         (data ?? []).forEach((r) => onMessage(rowToMessage(r), true));
 
-        this.room = this.sb
+        // Held in a local as well as on the instance, so the callbacks below
+        // close over a value TypeScript knows cannot be null.
+        const room = this.sb
           .channel('workspace', { config: { presence: { key: crypto.randomUUID() } } })
           .on(
             'postgres_changes',
@@ -70,7 +82,7 @@ class LiveChat {
             (p: { new: Record<string, unknown> }) => onMessage(rowToMessage(p.new)),
           )
           .on('presence', { event: 'sync' }, () => {
-            const state = this.room.presenceState() as Record<string, { name?: string }[]>;
+            const state = (room.presenceState() ?? {}) as Record<string, { name?: string }[]>;
             const names = new Set<string>();
             Object.values(state).forEach((entries) =>
               entries.forEach((e) => e.name && names.add(e.name)),
@@ -78,9 +90,11 @@ class LiveChat {
             onPresence(names);
           });
 
+        this.room = room;
+
         await new Promise<void>((resolve, reject) => {
           const bail = setTimeout(() => reject(new Error('timeout')), 6000);
-          this.room.subscribe((status: string) => {
+          room.subscribe((status: string) => {
             if (status === 'SUBSCRIBED') {
               clearTimeout(bail);
               resolve();

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { clearUser, getUser, initials, setUser, type User } from '@/lib/session';
+import Link from 'next/link';
+import { clearUser, initials, setUser, useUser } from '@/lib/session';
 
 /**
  * Top chrome for the landing page: an announcement strip and a sticky nav.
@@ -17,13 +18,12 @@ const LINKS = [
 ];
 
 export default function SiteNav() {
-  const [user, setU] = useState<User | null>(null);
+  const user = useUser();
   const [strip, setStrip] = useState(true);
   const [mode, setMode] = useState<'login' | 'signup' | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => setU(getUser()), []);
 
   useEffect(() => {
     const d = dialog.current;
@@ -43,7 +43,6 @@ export default function SiteNav() {
     if (!name || !email) return;
     const u = { name, email };
     setUser(u);
-    setU(u);
     setMode(null);
   }
 
@@ -69,9 +68,9 @@ export default function SiteNav() {
 
       <nav className="sticky top-0 z-30 border-b border-white/10 bg-canvas/65 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1180px] items-center gap-6 px-5 py-3">
-          <a href="/" className="font-display text-[17px] font-bold tracking-tight whitespace-nowrap">
+          <Link href="/" className="font-display text-[17px] font-bold tracking-tight whitespace-nowrap">
             Project<span className="text-accent">Match</span>
-          </a>
+          </Link>
 
           <div className="hidden gap-6 sm:flex">
             {LINKS.map((l) => (
@@ -101,7 +100,6 @@ export default function SiteNav() {
                   type="button"
                   onClick={() => {
                     clearUser();
-                    setU(null);
                   }}
                   className="rounded-full border border-line-strong px-4 py-2 text-[13px] font-medium hover:border-accent hover:text-accent"
                 >

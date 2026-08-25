@@ -68,7 +68,7 @@ export default function TeamBuilder({
   );
   const [activeRoleId, setActiveRoleId] = useState(initialBrief.roles[0]?.id ?? '');
 
-  const [reason, setReason] = useState<string | null>(null);
+  const [reason, setReason] = useState<{ key: string; text: string } | null>(null);
   const [reasonLoading, setReasonLoading] = useState(false);
   const reasonCache = useRef(new Map<string, string>());
   const briefRef = useRef<HTMLTextAreaElement>(null);
@@ -92,20 +92,24 @@ export default function TeamBuilder({
   const filtered =
     search.trim() !== '' || minHours > 0 || scope.companyId !== null || seniority.length > 0;
 
+  // Only show a rationale that belongs to the candidate currently on top.
+  const reasonKey =
+    top && activeRole ? `${activeRole.id}:${top.person.id}:${members.length}` : null;
+  const currentReason = reason && reason.key === reasonKey ? reason.text : null;
+
   // Gemini explains the engine's pick. It never reorders anything.
   useEffect(() => {
-    if (!top || !activeRole) {
-      setReason(null);
-      return;
-    }
+    if (!top || !activeRole) return;
+
     const key = `${activeRole.id}:${top.person.id}:${members.length}`;
     const cached = reasonCache.current.get(key);
     if (cached) {
-      setReason(cached);
+      // Keyed, so a stale rationale is simply not rendered rather than needing
+      // to be cleared synchronously inside the effect.
+      setReason({ key, text: cached });
       return;
     }
 
-    setReason(null);
     let cancelled = false;
     const timer = setTimeout(async () => {
       setReasonLoading(true);
@@ -141,10 +145,10 @@ export default function TeamBuilder({
         const json = await res.json();
         if (!cancelled && json?.ok && json.data?.reason) {
           reasonCache.current.set(key, json.data.reason);
-          setReason(json.data.reason);
+          setReason({ key, text: json.data.reason });
         }
       } catch {
-        if (!cancelled) setReason(null);
+        /* leave any previous rationale in place; it is keyed and will not be shown */
       } finally {
         if (!cancelled) setReasonLoading(false);
       }
@@ -592,7 +596,7 @@ export default function TeamBuilder({
                         seated={team[activeRole.id] === c.person.id}
                         onToggle={() => toggle(c.person.id)}
                         onExplore={() => setExploring(c.person.id)}
-                        rationale={isTop ? reason : null}
+                        rationale={isTop ? currentReason : null}
                         rationaleLoading={isTop && reasonLoading}
                       />
                     );

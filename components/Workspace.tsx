@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Brief, Person, Role, TeamHealth } from '@/lib/types';
-import { getUser, initials } from '@/lib/session';
+import { initials, useUser } from '@/lib/session';
 import { live, type ChatMessage, type LiveMode } from '@/lib/live';
 import Avatar from './Avatar';
 
@@ -64,12 +64,8 @@ export default function Workspace({
   onBack: () => void;
 }) {
   const [tab, setTab] = useState<Tab>('chat');
-  const [myName, setMyName] = useState('You');
-
-  useEffect(() => {
-    const u = getUser();
-    if (u?.name) setMyName(u.name);
-  }, []);
+  const signedIn = useUser();
+  const myName = signedIn?.name ?? 'You';
 
   const roleTitle = useCallback(
     (i: number, p: Person) => roles[i]?.title ?? p.title,

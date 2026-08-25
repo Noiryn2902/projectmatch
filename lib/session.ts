@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react';
+
 /**
  * Demo session. There is no auth server, so this records who the user says they
  * are and nothing else — enough to attribute chat messages and greet them.
@@ -14,6 +16,15 @@ export interface User {
 const KEY = 'pm_user';
 let memory: User | null = null;
 
+/** Bumped on every write so subscribers re-read. */
+const listeners = new Set<() => void>();
+let snapshot: User | null | undefined;
+
+function emit() {
+  snapshot = undefined;
+  for (const l of listeners) l();
+}
+
 export function getUser(): User | null {
   try {
     const raw = localStorage.getItem(KEY);
@@ -26,6 +37,7 @@ export function getUser(): User | null {
 
 export function setUser(u: User) {
   memory = u;
+  emit();
   try {
     localStorage.setItem(KEY, JSON.stringify(u));
   } catch {
@@ -35,6 +47,7 @@ export function setUser(u: User) {
 
 export function clearUser() {
   memory = null;
+  emit();
   try {
     localStorage.removeItem(KEY);
   } catch {
@@ -50,4 +63,25 @@ export function initials(name: string) {
     .slice(0, 2)
     .join('')
     .toUpperCase();
+}
+
+/**
+ * Read the session in a component.
+ *
+ * useSyncExternalStore rather than an effect that calls setState: the server
+ * and the first client render both see null, so hydration matches, and React
+ * swaps in the real value without a cascading render.
+ */
+export function useUser(): User | null {
+  return useSyncExternalStore(
+    (cb) => {
+      listeners.add(cb);
+      return () => listeners.delete(cb);
+    },
+    () => {
+      if (snapshot === undefined) snapshot = getUser();
+      return snapshot;
+    },
+    () => null,
+  );
 }
