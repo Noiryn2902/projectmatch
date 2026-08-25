@@ -274,7 +274,7 @@ export default function TeamBuilder({
                 />
                 <div className="flex items-center justify-between gap-3 px-2 pb-1">
                   <span className="text-[11px] text-faint">
-                    {briefText.trim().length > 0 ? 'Ctrl + Enter to submit' : 'No account required'}
+                    {briefText.trim().length > 0 ? 'Ctrl + Enter to submit' : ''}
                   </span>
                   <button
                     type="button"
