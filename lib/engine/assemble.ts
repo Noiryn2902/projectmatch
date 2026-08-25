@@ -36,16 +36,24 @@ export function rankCandidates(
   role: Role,
   brief: Brief,
   team: TeamState,
-  opts: { sort: SortMode; scope: ScopeFilter; search: string; minHours: number },
+  opts: {
+    sort: SortMode;
+    scope: ScopeFilter;
+    search: string;
+    minHours: number;
+    seniority?: number[];
+  },
 ): Candidate[] {
   const taken = new Set(Object.values(team).filter(Boolean) as string[]);
   const members = membersOf(team, pool);
   const meIsTaken = team[role.id];
+  const levels = opts.seniority && opts.seniority.length > 0 ? new Set(opts.seniority) : null;
 
   const eligible = pool.filter(
     (p) =>
       p.openToProjects &&
       p.hoursPerWeek >= opts.minHours &&
+      (!levels || levels.has(p.seniority)) &&
       (!taken.has(p.id) || p.id === meIsTaken) &&
       inScope(p, opts.scope) &&
       matchesSearch(p, opts.search),

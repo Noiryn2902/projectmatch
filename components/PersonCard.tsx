@@ -35,7 +35,7 @@ export default function PersonCard({
 
   return (
     <li
-      className={`pm-in border-b border-line px-5 py-5 transition-colors last:border-b-0 ${
+      className={`pm-in border-b border-line px-5 py-4 transition-colors last:border-b-0 ${
         seated ? 'bg-accent-soft/40' : 'hover:bg-panel-2/50'
       }`}
     >
@@ -52,7 +52,7 @@ export default function PersonCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="font-display text-[16px] leading-tight font-semibold">
                 {person.name}
@@ -62,7 +62,7 @@ export default function PersonCard({
                   </span>
                 )}
               </h3>
-              <p className="mt-1 text-[13px] text-muted">{person.title}</p>
+              <p className="mt-0.5 text-[13px] text-muted">{person.title}</p>
               <p className="mt-0.5 text-[12px] text-faint">
                 {companyName} · {person.office} · {person.yearsExp} yrs
               </p>
@@ -80,7 +80,7 @@ export default function PersonCard({
             </div>
           </div>
 
-          <ul className="mt-3 flex flex-wrap gap-1.5">
+          <ul className="mt-2.5 flex flex-wrap gap-1.5">
             {relevant.map((s) => (
               <li
                 key={s.skillId}
@@ -93,7 +93,7 @@ export default function PersonCard({
             ))}
           </ul>
 
-          <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <p className="text-[12px] text-faint">
               {person.hoursPerWeek} hrs/wk free · fits this seat{' '}
               {Math.round(candidate.roleMatch * 100)}%

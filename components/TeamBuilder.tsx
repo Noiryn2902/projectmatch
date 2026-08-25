@@ -7,6 +7,7 @@ import { teamHealth } from '@/lib/engine/health';
 import { labelOf, sim } from '@/lib/engine/graph';
 import PersonCard from './PersonCard';
 import TeamPanel from './TeamPanel';
+import Filters from './Filters';
 
 const SORTS: { id: SortMode; label: string }[] = [
   { id: 'bestFit', label: 'Best fit for this team' },
@@ -42,6 +43,7 @@ export default function TeamBuilder({
   const [sort, setSort] = useState<SortMode>('bestFit');
   const [search, setSearch] = useState('');
   const [minHours, setMinHours] = useState(0);
+  const [seniority, setSeniority] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
 
   const [team, setTeam] = useState<TeamState>(() =>
@@ -64,16 +66,12 @@ export default function TeamBuilder({
 
   const candidates = useMemo(() => {
     if (!activeRole) return [];
-    return rankCandidates(people, activeRole, brief, team, { sort, scope, search, minHours });
-  }, [people, activeRole, brief, team, sort, scope, search, minHours]);
-
-  const offices = useMemo(() => {
-    const c = companies.find((x) => x.id === scope.companyId);
-    return c ? c.offices : [];
-  }, [companies, scope.companyId]);
+    return rankCandidates(people, activeRole, brief, team, { sort, scope, search, minHours, seniority });
+  }, [people, activeRole, brief, team, sort, scope, search, minHours, seniority]);
 
   const top = candidates[0];
-  const filtered = search.trim() !== '' || minHours > 0 || scope.companyId !== null;
+  const filtered =
+    search.trim() !== '' || minHours > 0 || scope.companyId !== null || seniority.length > 0;
 
   // Gemini explains the engine's pick. It never reorders anything.
   useEffect(() => {
@@ -218,21 +216,6 @@ export default function TeamBuilder({
             ))}
           </select>
 
-          {offices.length > 0 && (
-            <select
-              aria-label="Office scope"
-              value={scope.office ?? ''}
-              onChange={(e) => setScope((s) => ({ ...s, office: e.target.value || null }))}
-              className="hidden shrink-0 rounded-lg border border-line bg-panel px-2.5 py-2 text-[12px] sm:block"
-            >
-              <option value="">All offices</option>
-              {offices.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-          )}
         </div>
       </header>
 
@@ -313,7 +296,7 @@ export default function TeamBuilder({
         </section>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[300px_1fr]">
-          <aside className="lg:sticky lg:top-[72px] lg:self-start">
+          <aside className="space-y-4 lg:sticky lg:top-[72px] lg:self-start">
             <TeamPanel
               brief={brief}
               team={team}
@@ -324,6 +307,16 @@ export default function TeamBuilder({
               onClear={(roleId) => setTeam((t) => ({ ...t, [roleId]: null }))}
               onAutoFill={runAutoFill}
               busy={busy}
+            />
+            <Filters
+              companies={companies}
+              scope={scope}
+              onScope={setScope}
+              minHours={minHours}
+              onMinHours={setMinHours}
+              seniority={seniority}
+              onSeniority={setSeniority}
+              resultCount={candidates.length}
             />
           </aside>
 
@@ -340,18 +333,6 @@ export default function TeamBuilder({
               </div>
 
               <div className="flex items-center gap-2">
-                <select
-                  value={minHours}
-                  onChange={(e) => setMinHours(Number(e.target.value))}
-                  className="rounded-lg border border-line bg-panel px-2.5 py-1.5 text-[12px]"
-                  aria-label="Minimum free hours per week"
-                >
-                  {[0, 5, 10, 15].map((h) => (
-                    <option key={h} value={h}>
-                      {h === 0 ? 'Any hours' : h + '+ hrs/wk'}
-                    </option>
-                  ))}
-                </select>
                 <select
                   value={sort}
                   onChange={(e) => setSort(e.target.value as SortMode)}
