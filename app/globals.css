@@ -2,20 +2,20 @@
 
 /* Deliberately dark only. A cinematic treatment with a light mode fights itself. */
 :root {
-  --canvas: #060910;
-  --panel: #0c1220;
-  --panel-2: #141c2e;
-  --ink: #e9eff9;
-  --muted: #93a4bf;
-  --faint: #64748e;
-  --line: #1b2436;
-  --line-strong: #2a3750;
-  --accent: #22d3ee;
-  --accent-ink: #a9effa;
-  --accent-soft: #0a2a38;
-  --warn: #f5a97f;
-  --warn-soft: #2b1d16;
-  --glow: 0 0 24px -6px rgba(34, 211, 238, 0.55);
+  --canvas: #0b0906;
+  --panel: #15110b;
+  --panel-2: #1f1a11;
+  --ink: #f3ece0;
+  --muted: #a89b85;
+  --faint: #8f8269;
+  --line: #272115;
+  --line-strong: #3c3423;
+  --accent: #e0a93f;
+  --accent-ink: #f6dca6;
+  --accent-soft: #2c2110;
+  --warn: #e0714a;
+  --warn-soft: #2e1a12;
+  --glow: 0 0 24px -6px rgba(224, 169, 63, 0.5);
   --shadow: 0 18px 50px -22px rgba(0, 0, 0, 0.9);
 }
 
@@ -75,9 +75,9 @@ body {
    bright monitors in the hero sit exactly where the subline lands. */
 .pm-legible {
   text-shadow:
-    0 1px 1px rgba(6, 9, 16, 1),
-    0 2px 6px rgba(6, 9, 16, 0.95),
-    0 6px 26px rgba(6, 9, 16, 0.85);
+    0 1px 1px rgba(11, 9, 6, 1),
+    0 2px 6px rgba(11, 9, 6, 0.95),
+    0 6px 26px rgba(11, 9, 6, 0.85);
 }
 
 .pm-vignette::before {
@@ -85,7 +85,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(120% 80% at 50% 35%, transparent 35%, rgba(6, 9, 16, 0.75) 100%);
+  background: radial-gradient(120% 80% at 50% 35%, transparent 35%, rgba(11, 9, 6, 0.75) 100%);
 }
 
 @keyframes pm-in {
