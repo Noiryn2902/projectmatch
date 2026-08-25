@@ -92,7 +92,9 @@ export default function TeamPanel({
                       />
                     )}
                     <span className="min-w-0">
-                      <span className="block truncate text-[13px] font-medium">{role.title}</span>
+                      {/* Gemini writes role titles like "Backend and Infrastructure
+                          Engineer", which will not fit one line in a 300px rail. */}
+                      <span className="block text-[13px] leading-snug font-medium">{role.title}</span>
                       <span
                         className={`block truncate text-[12px] ${
                           person ? 'text-muted' : 'text-faint italic'
