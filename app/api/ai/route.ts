@@ -187,7 +187,7 @@ export async function POST(request: Request) {
       '',
       'Requirements:',
       '- One sentence, 30 words maximum, third person, starting with the candidate name.',
-      '- Write all figures as numerals.',
+      '- Write all figures as numerals and use the % symbol, never the word percent.',
       '- Name the specific skills directly. Never write that someone "provides" or "offers" a skill.',
       '- Plain professional register. No praise adjectives, no marketing language, no em dashes.',
       '- Never use: leverage, robust, seamless, passionate, exceptional, invaluable, perfect, ideal.',

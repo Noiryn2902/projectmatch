@@ -1,56 +1,60 @@
 'use client';
 
+import type { Company, Person } from '@/lib/types';
+import Avatar from './Avatar';
+
 /**
- * Illustrative scenarios, attributed to the same fictional companies that
- * populate the directory. Nothing here is a real endorsement, and the note
- * at the foot of the section says so.
+ * Illustrative scenarios, attributed to real entries in the directory so the
+ * faces and job titles line up with people you can actually go and find.
+ * The note at the foot of the section says these are not real endorsements.
  */
-const QUOTES: { quote: string; name: string; role: string; company: string }[] = [
+const QUOTES: { id: string; quote: string }[] = [
   {
+    id: 'p03',
     quote:
       'We had three backend engineers volunteer and nobody who could design the thing. ProjectMatch scored the fourth backend engineer at zero and put a designer at the top instead. That is the call we kept getting wrong by ourselves.',
-    name: 'Wei Webb',
-    role: 'Staff platform engineer',
-    company: 'Orbit Financial',
   },
   {
+    id: 'p02',
     quote:
       'It told us the four of us shared three hours a week before we started, not six weeks in when the project was already failing. We moved two people and fixed it on day one.',
-    name: 'Nadia Khalil',
-    role: 'Principal backend engineer',
-    company: 'Lumen Education',
   },
   {
+    id: 'p01',
     quote:
       'I wrote two lines about the project and got a roster with a domain expert I would never have thought to look for. She was in a different office and I had never met her.',
-    name: 'Diego Larsen',
-    role: 'Senior frontend engineer',
-    company: 'Verdant Climate',
   },
   {
+    id: 'p08',
     quote:
       'What sold me was that it listed what the team still could not do. Every other tool I have used shows you a confident percentage and stops there.',
-    name: 'Hannah Krishnan',
-    role: 'Senior product designer',
-    company: 'Northwind Labs',
   },
   {
+    id: 'p06',
     quote:
       'Searching my own office first and then widening was the part I actually used. I found someone two desks away before I went looking anywhere else.',
-    name: 'Priya Raman',
-    role: 'Senior engineer',
-    company: 'Kestrel Health',
   },
   {
+    id: 'p09',
     quote:
       'Every suggestion came with the reason attached and a way to contact the person. No dead ends, no wondering why the algorithm liked someone.',
-    name: 'Daniel Volkov',
-    role: 'Staff product manager',
-    company: 'Atlas Logistics',
   },
 ];
 
-export default function Proof() {
+export default function Proof({
+  people,
+  companies,
+}: {
+  people: Person[];
+  companies: Company[];
+}) {
+  const byId = new Map(people.map((p) => [p.id, p]));
+  const companyName = (id: string) => companies.find((c) => c.id === id)?.name ?? id;
+
+  const cards = QUOTES.map((q) => ({ ...q, person: byId.get(q.id) })).filter(
+    (q): q is typeof q & { person: Person } => Boolean(q.person),
+  );
+
   return (
     <section className="mx-auto max-w-[1180px] px-5 py-20">
       <h2 className="font-display text-[26px] leading-tight font-bold tracking-tight sm:text-[32px]">
@@ -61,17 +65,20 @@ export default function Proof() {
       </p>
 
       <ul className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {QUOTES.map((q) => (
+        {cards.map(({ id, quote, person }) => (
           <li
-            key={q.name}
+            key={id}
             className="flex flex-col rounded-xl border border-line bg-panel p-5 transition-colors hover:border-line-strong"
           >
-            <p className="flex-1 text-[14px] leading-relaxed text-ink/90">{q.quote}</p>
-            <div className="mt-5 border-t border-line pt-3.5">
-              <p className="text-[13px] font-medium">{q.name}</p>
-              <p className="mt-0.5 text-[12px] text-faint">
-                {q.role} · {q.company}
-              </p>
+            <p className="flex-1 text-[14px] leading-relaxed text-ink/90">{quote}</p>
+            <div className="mt-5 flex items-center gap-3 border-t border-line pt-4">
+              <Avatar person={person} size={40} />
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-medium">{person.name}</p>
+                <p className="truncate text-[12px] text-faint">
+                  {person.title} · {companyName(person.companyId)}
+                </p>
+              </div>
             </div>
           </li>
         ))}

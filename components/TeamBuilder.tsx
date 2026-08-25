@@ -297,7 +297,7 @@ export default function TeamBuilder({
         </div>
 
         <div className="border-t border-line bg-canvas">
-          <Proof />
+          <Proof people={people} companies={companies} />
         </div>
       </div>
     );
@@ -489,8 +489,8 @@ export default function TeamBuilder({
                 </button>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-xl border border-line bg-panel">
-                <ul>
+              <div>
+                <ul className="grid gap-3 sm:grid-cols-2">
                   {candidates.slice(0, 20).map((c, i) => {
                     // The rationale belongs to the top-ranked candidate and sits
                     // inside their card, rather than repeating it in a banner above.
