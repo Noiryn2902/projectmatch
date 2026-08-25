@@ -2,6 +2,8 @@ import type { Brief, Person, Role, ScopeFilter, ScoreBreakdown, SortMode, TeamSt
 import { labelOf } from './graph';
 import { marginalGain, roleMatch, scoreCandidate, allRequirements, coverage } from './score';
 
+const SEAT_FLOOR = 0.35;
+
 export interface Candidate {
   person: Person;
   breakdown: ScoreBreakdown;
@@ -67,8 +69,19 @@ export function rankCandidates(
     roleMatch: roleMatch(person, role),
   }));
 
+  // Best fit shortlists to people who can credibly hold the seat, then ranks
+  // purely on contribution. Ranking on the blended score while displaying only
+  // the contribution made the list read as unsorted.
+  if (opts.sort === 'bestFit') {
+    const capable = scored.filter((c) => c.roleMatch >= SEAT_FLOOR);
+    const list = capable.length >= 3 ? capable : scored;
+    return list.sort(
+      (a, b) => b.breakdown.gapFill - a.breakdown.gapFill || b.roleMatch - a.roleMatch,
+    );
+  }
+
   const cmp: Record<SortMode, (a: Candidate, b: Candidate) => number> = {
-    bestFit: (a, b) => b.breakdown.total - a.breakdown.total,
+    bestFit: (a, b) => b.breakdown.gapFill - a.breakdown.gapFill,
     experience: (a, b) => b.person.yearsExp - a.person.yearsExp,
     availability: (a, b) => b.person.hoursPerWeek - a.person.hoursPerWeek,
     skillMatch: (a, b) => b.roleMatch - a.roleMatch,
@@ -129,7 +142,6 @@ export function improve(
 
   // A swap only counts as an improvement if the person can actually do the
   // job. Without this the optimiser happily seats a designer as the DBA.
-  const SEAT_FLOOR = 0.35;
   const objective = (t: TeamState) => {
     const m = membersOf(t, pool);
     const seatFit =

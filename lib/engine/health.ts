@@ -25,7 +25,7 @@ export function teamHealth(brief: Brief, members: Person[], seats: number): Team
     if (seen.has(u.req.skillId)) continue;
     seen.add(u.req.skillId);
     gaps.push({
-      label: 'Nobody covers ' + labelOf(u.req.skillId),
+      label: 'No coverage for ' + labelOf(u.req.skillId),
       severity: u.req.weight >= 3 ? 'high' : 'medium',
     });
     if (gaps.length >= 3) break;
@@ -33,21 +33,21 @@ export function teamHealth(brief: Brief, members: Person[], seats: number): Team
 
   if (members.length >= 2 && overlapHours < 5) {
     gaps.push({
-      label: 'These ' + members.length + ' share only ' + overlapHours + ' hrs a week',
+      label: 'Team overlap is only ' + overlapHours + ' hrs per week',
       severity: 'high',
     });
   }
 
   if (members.length >= 3) {
     const avg = members.reduce((a, p) => a + p.seniority, 0) / members.length;
-    if (avg < 2.2) gaps.push({ label: 'No senior voice on this team', severity: 'medium' });
-    if (avg > 4.3) gaps.push({ label: 'All senior, nobody to do the legwork', severity: 'medium' });
+    if (avg < 2.2) gaps.push({ label: 'No senior presence on the team', severity: 'medium' });
+    if (avg > 4.3) gaps.push({ label: 'Entirely senior, no junior capacity', severity: 'medium' });
   }
 
   const thin = members.filter((p) => p.hoursPerWeek <= 3);
   if (thin.length > 0) {
     gaps.push({
-      label: thin[0].name.split(' ')[0] + ' has only ' + thin[0].hoursPerWeek + ' hrs a week free',
+      label: thin[0].name + ' is limited to ' + thin[0].hoursPerWeek + ' hrs per week',
       severity: 'medium',
     });
   }

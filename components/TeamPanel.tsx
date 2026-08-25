@@ -36,7 +36,7 @@ export default function TeamPanel({
       <section className="rounded-xl border border-line bg-panel">
         <div className="border-b border-line px-4 py-3">
           <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-[15px] font-semibold">Your team</h2>
+            <h2 className="font-display text-[15px] font-semibold">Team</h2>
             <span className="text-[12px] text-muted">
               {health.filled} of {health.seats}
             </span>
@@ -53,7 +53,7 @@ export default function TeamPanel({
             />
           </div>
           <p className="mt-2 text-[11px] text-faint">
-            {health.overlapHours} hrs a week everyone is awake together
+            {health.overlapHours} hrs per week of overlapping availability
           </p>
         </div>
 
@@ -100,7 +100,7 @@ export default function TeamPanel({
                           person ? 'text-muted' : 'text-faint italic'
                         }`}
                       >
-                        {person ? person.name : 'empty seat'}
+                        {person ? person.name : 'Unfilled'}
                       </span>
                     </span>
                   </button>
@@ -112,7 +112,7 @@ export default function TeamPanel({
                       aria-label={`Remove ${person.name} from ${role.title}`}
                       className="shrink-0 rounded px-2 py-1 text-[11px] text-faint hover:bg-panel hover:text-warn"
                     >
-                      swap
+                      Replace
                     </button>
                   )}
                 </div>
@@ -128,18 +128,18 @@ export default function TeamPanel({
             disabled={busy}
             className="w-full rounded-lg bg-accent px-3 py-2 text-[13px] font-medium text-panel transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {busy ? 'Working…' : 'Auto-fill best team'}
+            {busy ? 'Optimising…' : 'Auto-fill team'}
           </button>
         </div>
       </section>
 
       <section className="rounded-xl border border-line bg-panel px-4 py-3.5">
         <h3 className="text-[13px] font-medium">
-          {health.gaps.length > 0 ? 'Still missing' : 'Nothing obvious missing'}
+          {health.gaps.length > 0 ? 'Coverage gaps' : 'No gaps detected'}
         </h3>
         {health.gaps.length === 0 ? (
           <p className="mt-2 text-[12px] text-faint">
-            Every requirement is covered and the hours line up.
+            Every requirement is covered and availability aligns.
           </p>
         ) : (
           <ul className="mt-2.5 space-y-2">

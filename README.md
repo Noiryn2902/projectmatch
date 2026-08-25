@@ -51,7 +51,13 @@ Each person carries working hours and a timezone. The engine intersects the whol
 2. Fill each seat with whoever adds the most, recalculating after every pick
 3. Run a swap pass, keeping any exchange that raises the team's score
 
-Greedy alone reaches 82% coverage on the sample brief. The swap pass takes it to 91%.
+The swap pass optimises a blend of requirement coverage and seat fit, and only considers
+people who clear a role-match floor. It will trade a point of raw coverage for a person who
+can actually hold the seat, which is the correct trade for a real team.
+
+Ranking in the candidate list follows the same rule: `Best fit` shortlists to people who
+clear that floor, then orders purely by gap closed. The number shown on each card is the
+number the list sorted by.
 
 ## Where AI sits, deliberately
 

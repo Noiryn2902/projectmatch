@@ -132,7 +132,7 @@ export async function POST(request: Request) {
     const text = String(payload?.text ?? '').slice(0, 2000);
     if (text.trim().length < 8) {
       return NextResponse.json(
-        { ok: false, error: 'Tell me a little more about the project.' },
+        { ok: false, error: 'Please add a little more detail about the project.' },
         { status: 400 },
       );
     }
@@ -176,15 +176,22 @@ export async function POST(request: Request) {
     const missing = String(payload?.missing ?? '');
 
     const prompt = [
-      `Write one sentence, at most 32 words, explaining why ${name} is the pick for the ${roleTitle} seat.`,
-      `They are a ${title} in ${office} with ${hours} hours a week free.`,
-      `They cover: ${covers || 'the core requirements'}.`,
-      `They close ${gapPct}% of what the team was still missing.`,
-      missing ? `The team still lacks: ${missing}.` : '',
-      'Write numbers as numerals (73%, 6 hrs), never spelled out.',
-      'Be specific and plain. No praise words, no marketing language, no em dashes.',
-      'Do not start with "With". Do not use the words "offering", "leverage", "robust", or "seamless".',
-      'Name the concrete skills and the hours. If the team still lacks something, end by saying so.',
+      'Write one sentence justifying a candidate selection, for a professional staffing tool.',
+      '',
+      `Candidate: ${name}, ${title}, based in ${office}.`,
+      `Role: ${roleTitle}.`,
+      `Relevant skills: ${covers || 'the core requirements'}.`,
+      `Availability: ${hours} hours per week.`,
+      `Closes ${gapPct}% of the team's remaining skill gap.`,
+      missing ? `Gap remaining after selection: ${missing}.` : '',
+      '',
+      'Requirements:',
+      '- One sentence, 30 words maximum, third person, starting with the candidate name.',
+      '- Write all figures as numerals.',
+      '- Name the specific skills directly. Never write that someone "provides" or "offers" a skill.',
+      '- Plain professional register. No praise adjectives, no marketing language, no em dashes.',
+      '- Never use: leverage, robust, seamless, passionate, exceptional, invaluable, perfect, ideal.',
+      '- If a remaining gap is given, close the sentence by naming it.',
     ]
       .filter(Boolean)
       .join('\n');

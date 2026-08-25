@@ -15,12 +15,16 @@ export default function PersonCard({
   companyName,
   seated,
   onToggle,
+  rationale,
+  rationaleLoading,
 }: {
   candidate: Candidate;
   role: Role;
   companyName: string;
   seated: boolean;
   onToggle: () => void;
+  rationale?: string | null;
+  rationaleLoading?: boolean;
 }) {
   const { person, breakdown } = candidate;
   const adds = Math.round(breakdown.gapFill * 100);
@@ -58,7 +62,7 @@ export default function PersonCard({
                 {person.name}
                 {seated && (
                   <span className="ml-2 align-middle rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium tracking-wide text-panel">
-                    on the team
+                    Selected
                   </span>
                 )}
               </h3>
@@ -76,9 +80,19 @@ export default function PersonCard({
               >
                 {adds}%
               </div>
-              <div className="mt-1 text-[11px] whitespace-nowrap text-faint">of the gap</div>
+              <div className="mt-1 text-[11px] whitespace-nowrap text-faint">gap closed</div>
             </div>
           </div>
+
+          {(rationale || rationaleLoading) && (
+            <p
+              className={`mt-2.5 border-l-2 border-accent pl-3 text-[12.5px] leading-relaxed text-accent-ink ${
+                rationaleLoading && !rationale ? 'pm-pulse' : ''
+              }`}
+            >
+              {rationale ?? 'Generating rationale…'}
+            </p>
+          )}
 
           <ul className="mt-2.5 flex flex-wrap gap-1.5">
             {relevant.map((s) => (
@@ -95,8 +109,8 @@ export default function PersonCard({
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <p className="text-[12px] text-faint">
-              {person.hoursPerWeek} hrs/wk free · fits this seat{' '}
-              {Math.round(candidate.roleMatch * 100)}%
+              {person.hoursPerWeek} hrs/week available · {Math.round(candidate.roleMatch * 100)}%
+              role match
             </p>
 
             <div className="flex items-center gap-3">

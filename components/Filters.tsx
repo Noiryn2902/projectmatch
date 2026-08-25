@@ -64,7 +64,7 @@ export default function Filters({
 
       <div className="space-y-4 px-4 py-3.5">
         <div>
-          <h3 className="text-[12px] font-medium text-muted">Free hours a week</h3>
+          <h3 className="text-[12px] font-medium text-muted">Weekly availability</h3>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {HOURS.map((h) => (
               <button
@@ -124,7 +124,7 @@ export default function Filters({
         )}
 
         <p className="border-t border-line pt-3 text-[12px] text-faint">
-          {resultCount} {resultCount === 1 ? 'person' : 'people'} match
+          {resultCount} {resultCount === 1 ? 'candidate' : 'candidates'}
         </p>
       </div>
     </section>

@@ -141,7 +141,7 @@ export default function TeamBuilder({
 
   async function analyze() {
     if (briefText.trim().length < 8) {
-      setError('Tell me a little more about the project.');
+      setError('Please add a little more detail about the project.');
       return;
     }
     setAnalyzing(true);
@@ -153,7 +153,7 @@ export default function TeamBuilder({
         body: JSON.stringify({ action: 'brief', payload: { text: briefText } }),
       });
       const json = await res.json();
-      if (!json?.ok) throw new Error(json?.error ?? 'Could not read that brief.');
+      if (!json?.ok) throw new Error(json?.error ?? 'The brief could not be read.');
 
       const next: Brief = { text: briefText, ...json.data };
       setBrief(next);
@@ -164,7 +164,7 @@ export default function TeamBuilder({
       setBriefOpen(false);
       setStarted(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong reading that brief.');
+      setError(e instanceof Error ? e.message : 'The brief could not be processed. Please try again.');
     } finally {
       setAnalyzing(false);
     }
@@ -194,8 +194,8 @@ export default function TeamBuilder({
             Project<span className="text-accent">Match</span>
           </h1>
           <p className="mx-auto mt-3 max-w-[470px] text-center text-[15px] leading-relaxed text-muted">
-            Describe your project in a line or two. Get a whole team back, and an honest list of
-            what that team is still missing.
+            Describe your project. Get a complete team back, with a clear account of what that
+            team still lacks.
           </p>
 
           <div className="mt-7 rounded-2xl border border-line bg-panel p-2 focus-within:border-accent">
@@ -216,7 +216,7 @@ export default function TeamBuilder({
             />
             <div className="flex items-center justify-between gap-3 px-2 pb-1">
               <span className="text-[11px] text-faint">
-                {briefText.trim().length > 0 ? 'Ctrl + Enter to send' : 'No signup, no database'}
+                {briefText.trim().length > 0 ? 'Ctrl + Enter to submit' : 'No account required'}
               </span>
               <button
                 type="button"
@@ -224,7 +224,7 @@ export default function TeamBuilder({
                 disabled={analyzing}
                 className="rounded-xl bg-accent px-5 py-2.5 text-[14px] font-medium text-panel transition-opacity hover:opacity-90 disabled:opacity-50"
               >
-                {analyzing ? 'Reading your brief…' : 'Find my team'}
+                {analyzing ? 'Analysing brief…' : 'Build my team'}
               </button>
             </div>
           </div>
@@ -312,7 +312,7 @@ export default function TeamBuilder({
                   disabled={analyzing}
                   className="rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-panel transition-opacity hover:opacity-90 disabled:opacity-60"
                 >
-                  {analyzing ? 'Reading the brief…' : 'Find my team'}
+                  {analyzing ? 'Analysing brief…' : 'Rebuild team'}
                 </button>
                 <button
                   type="button"
@@ -389,8 +389,8 @@ export default function TeamBuilder({
                   {activeRole?.title ?? 'Candidates'}
                 </h2>
                 <p className="mt-0.5 text-[12px] text-faint">
-                  {candidates.length} available
-                  {sort === 'bestFit' && ' · ranked by what they add to this team'}
+                  {candidates.length} {candidates.length === 1 ? 'candidate' : 'candidates'}
+                  {sort === 'bestFit' && ' · ranked by contribution to this team'}
                 </p>
               </div>
 
@@ -412,7 +412,7 @@ export default function TeamBuilder({
 
             {candidates.length === 0 ? (
               <div className="rounded-xl border border-dashed border-line p-10 text-center">
-                <p className="text-[14px] text-muted">Nobody matches those filters.</p>
+                <p className="text-[14px] text-muted">No candidates match these filters.</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -422,58 +422,45 @@ export default function TeamBuilder({
                   }}
                   className="mt-2 text-[13px] text-accent underline underline-offset-2"
                 >
-                  Clear the filters
+                  Clear filters
                 </button>
               </div>
             ) : (
               <div className="overflow-hidden rounded-xl border border-line bg-panel">
-                {sort === 'bestFit' && !filtered && top && activeRole && (
-                  <div className="border-b border-line bg-accent-soft px-5 py-3.5">
-                    <p className="text-[11px] font-medium tracking-wide text-accent-ink uppercase">
-                      Recommended
-                    </p>
-                    <p
-                      className={`mt-1 text-[13px] leading-relaxed text-accent-ink ${
-                        reasonLoading && !reason ? 'pm-pulse' : ''
-                      }`}
-                    >
-                      {reason ??
-                        (reasonLoading
-                          ? 'Working out why…'
-                          : `${top.person.name} closes ${Math.round(
-                              top.breakdown.gapFill * 100,
-                            )}% of what this team is still missing.`)}
-                    </p>
-                  </div>
-                )}
-
                 <ul>
-                  {candidates.slice(0, 20).map((c) => (
-                    <PersonCard
-                      key={c.person.id}
-                      candidate={c}
-                      role={activeRole}
-                      companyName={companyName(c.person.companyId)}
-                      seated={team[activeRole.id] === c.person.id}
-                      onToggle={() => toggle(c.person.id)}
-                    />
-                  ))}
+                  {candidates.slice(0, 20).map((c, i) => {
+                    // The rationale belongs to the top-ranked candidate and sits
+                    // inside their card, rather than repeating it in a banner above.
+                    const isTop = i === 0 && sort === 'bestFit' && !filtered;
+                    return (
+                      <PersonCard
+                        key={c.person.id}
+                        candidate={c}
+                        role={activeRole}
+                        companyName={companyName(c.person.companyId)}
+                        seated={team[activeRole.id] === c.person.id}
+                        onToggle={() => toggle(c.person.id)}
+                        rationale={isTop ? reason : null}
+                        rationaleLoading={isTop && reasonLoading}
+                      />
+                    );
+                  })}
                 </ul>
               </div>
             )}
 
             {candidates.length > 20 && (
               <p className="mt-4 text-center text-[12px] text-faint">
-                {candidates.length - 20} more further down the ranking
+                {candidates.length - 20} further candidates below this ranking
               </p>
             )}
           </section>
         </div>
 
         <footer className="mt-12 border-t border-line pt-4 text-[11px] leading-relaxed text-faint">
-          Everyone here is generated and fictional. No real people, nothing scraped. All matching
-          runs in your browser on plain arithmetic. Gemini only reads the brief and writes the
-          explanation, it never picks the team.
+          All profiles are generated and fictional. Matching runs locally in the browser on
+          deterministic scoring. Gemini reads the brief and writes the rationale; it does not
+          select the team.
         </footer>
       </main>
     </div>
