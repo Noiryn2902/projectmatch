@@ -65,7 +65,7 @@ export default function Band({
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(62% 52% at 50% 50%, rgba(11,9,6,0.86) 0%, rgba(11,9,6,0.6) 55%, rgba(11,9,6,0.1) 100%)',
+            'radial-gradient(62% 52% at 50% 50%, rgba(8,9,12,0.86) 0%, rgba(8,9,12,0.6) 55%, rgba(8,9,12,0.1) 100%)',
         }}
       />
       <div
@@ -73,7 +73,7 @@ export default function Band({
         className="absolute inset-0"
         style={{
           background:
-            'linear-gradient(to bottom, rgba(11,9,6,0.7) 0%, rgba(11,9,6,0.15) 30%, rgba(11,9,6,0.15) 70%, rgba(11,9,6,0.75) 100%)',
+            'linear-gradient(to bottom, rgba(8,9,12,0.7) 0%, rgba(8,9,12,0.15) 30%, rgba(8,9,12,0.15) 70%, rgba(8,9,12,0.75) 100%)',
         }}
       />
 

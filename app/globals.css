@@ -2,29 +2,31 @@
 
 /* Deliberately dark only. A cinematic treatment with a light mode fights itself. */
 :root {
-  --canvas: #0b0906;
-  --panel: #15110b;
-  --panel-2: #1f1a11;
-  --ink: #f3ece0;
-  --muted: #a89b85;
-  --faint: #8f8269;
-  --line: #272115;
-  --line-strong: #3c3423;
-  --accent: #e0a93f;
-  --accent-ink: #f6dca6;
-  --accent-soft: #2c2110;
+  --canvas: #08090c;
+  --panel: #0f1116;
+  --panel-2: #171a21;
+  --ink: #eceef3;
+  --muted: #98a0ae;
+  --faint: #818a99;
+  --line: #1c1f27;
+  --line-strong: #2b2f3a;
+  --accent: #e8b04a;
+  --accent-ink: #f8dca8;
+  --accent-soft: #251c0c;
   /* Colour carries meaning here rather than decoration.
      amber = the product and its calls to action
      green = coverage and anything the team already has
      violet = anything Gemini did, so AI is visually separable from the engine
      coral = gaps and warnings */
-  --good: #6bbf8a;
-  --good-soft: #10261a;
+  --good: #5fd39a;
+  --good-soft: #0c2a1d;
   --ai: #a78bfa;
-  --ai-soft: #1e1833;
-  --warn: #e0714a;
-  --warn-soft: #2e1a12;
-  --glow: 0 0 24px -6px rgba(224, 169, 63, 0.5);
+  --ai-soft: #1b1730;
+  --warn: #f0785a;
+  --warn-soft: #2a1712;
+  --info: #5ea9f0;
+  --info-soft: #0d1e2f;
+  --glow: 0 0 24px -6px rgba(232, 176, 74, 0.5);
   --shadow: 0 18px 50px -22px rgba(0, 0, 0, 0.9);
 }
 
@@ -44,6 +46,8 @@
   --color-good-soft: var(--good-soft);
   --color-ai: var(--ai);
   --color-ai-soft: var(--ai-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
   --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
@@ -88,9 +92,9 @@ body {
    bright monitors in the hero sit exactly where the subline lands. */
 .pm-legible {
   text-shadow:
-    0 1px 1px rgba(11, 9, 6, 1),
-    0 2px 6px rgba(11, 9, 6, 0.95),
-    0 6px 26px rgba(11, 9, 6, 0.85);
+    0 1px 1px rgba(8, 9, 12, 1),
+    0 2px 6px rgba(8, 9, 12, 0.95),
+    0 6px 26px rgba(8, 9, 12, 0.85);
 }
 
 .pm-vignette::before {
@@ -98,7 +102,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(120% 80% at 50% 35%, transparent 35%, rgba(11, 9, 6, 0.75) 100%);
+  background: radial-gradient(120% 80% at 50% 35%, transparent 35%, rgba(8, 9, 12, 0.75) 100%);
 }
 
 @keyframes pm-in {

@@ -21,11 +21,11 @@ function useCountUp(target: number, run: boolean, ms = 900) {
   return n;
 }
 
-function Stat({ value, label, run }: { value: number; label: string; run: boolean }) {
+function Stat({ value, label, run, tone }: { value: number; label: string; run: boolean; tone: string }) {
   const n = useCountUp(value, run);
   return (
     <div className="text-center">
-      <div className="font-display text-[30px] leading-none font-bold text-accent sm:text-[38px]">
+      <div className={`font-display text-[30px] leading-none font-bold sm:text-[38px] ${tone}`}>
         {n}
       </div>
       <div className="mt-2 text-[12px] text-muted">{label}</div>
@@ -73,13 +73,30 @@ export default function Stats({
   }, []);
 
   return (
-    <div ref={ref} className="border-y border-line bg-panel/40">
-      <div className="mx-auto grid max-w-[1180px] xl:max-w-[1400px] grid-cols-2 gap-y-9 px-5 py-12 sm:grid-cols-3 lg:grid-cols-5">
-        <Stat value={people} label="people in the directory" run={run} />
-        <Stat value={companies} label="companies" run={run} />
-        <Stat value={offices} label="offices" run={run} />
-        <Stat value={skills} label="skills in the graph" run={run} />
-        <Stat value={timezones} label="timezones covered" run={run} />
+    <div ref={ref} className="relative overflow-hidden border-y border-line bg-panel/40">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/media/band-desk-2.webp"
+        alt=""
+        aria-hidden
+        loading="lazy"
+        decoding="async"
+        className="absolute inset-0 h-full w-full object-cover opacity-[0.13]"
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(to right, rgba(8,9,12,0.95) 0%, rgba(8,9,12,0.5) 50%, rgba(8,9,12,0.95) 100%)',
+        }}
+      />
+      <div className="relative mx-auto grid max-w-[1180px] xl:max-w-[1400px] grid-cols-2 gap-y-9 px-5 py-12 sm:grid-cols-3 lg:grid-cols-5">
+        <Stat value={people} label="people in the directory" run={run} tone="text-accent" />
+        <Stat value={companies} label="companies" run={run} tone="text-good" />
+        <Stat value={offices} label="offices" run={run} tone="text-info" />
+        <Stat value={skills} label="skills in the graph" run={run} tone="text-ai" />
+        <Stat value={timezones} label="timezones covered" run={run} tone="text-warn" />
       </div>
     </div>
   );

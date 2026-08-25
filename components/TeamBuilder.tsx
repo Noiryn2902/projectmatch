@@ -225,7 +225,7 @@ export default function TeamBuilder({
             className="absolute inset-0"
             style={{
               background:
-                'radial-gradient(58% 36% at 50% 43%, rgba(11,9,6,0.52) 0%, rgba(11,9,6,0.38) 55%, rgba(11,9,6,0.14) 82%, rgba(11,9,6,0) 100%)',
+                'radial-gradient(58% 36% at 50% 43%, rgba(8,9,12,0.52) 0%, rgba(8,9,12,0.38) 55%, rgba(8,9,12,0.14) 82%, rgba(8,9,12,0) 100%)',
             }}
           />
           <div
@@ -233,7 +233,7 @@ export default function TeamBuilder({
             className="absolute inset-0"
             style={{
               background:
-                'linear-gradient(to bottom, rgba(11,9,6,0.42) 0%, rgba(11,9,6,0.05) 26%, rgba(11,9,6,0.05) 58%, rgba(11,9,6,0.58) 88%, rgba(11,9,6,0.94) 100%)',
+                'linear-gradient(to bottom, rgba(8,9,12,0.42) 0%, rgba(8,9,12,0.05) 26%, rgba(8,9,12,0.05) 58%, rgba(8,9,12,0.58) 88%, rgba(8,9,12,0.94) 100%)',
             }}
           />
         </div>
