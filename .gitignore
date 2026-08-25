@@ -9,3 +9,9 @@ npm-debug.log*
 !.env.example
 .vercel
 next-env.d.ts
+
+.vercel
+.env*
+
+# build artifact, should never have been tracked
+tsconfig.tsbuildinfo
