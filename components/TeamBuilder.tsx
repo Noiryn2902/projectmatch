@@ -189,7 +189,7 @@ export default function TeamBuilder({
   if (!started) {
     return (
       <div className="pm-grain relative min-h-screen overflow-hidden">
-        <div className="pm-vignette absolute inset-0">
+        <div className="absolute inset-0">
           {/* Poster carries the frame on its own, so the page is complete
               before the clip loads and stays complete if it never does. */}
           <video
@@ -200,31 +200,50 @@ export default function TeamBuilder({
             preload="metadata"
             poster="/media/hero.webp"
             aria-hidden="true"
-            className="h-full w-full scale-105 object-cover opacity-80"
+            className="h-full w-full scale-105 object-cover opacity-85"
           >
             <source src="/media/hero.mp4" type="video/mp4" />
           </video>
+
+          {/* Scrim sits darkest where the copy lands, not at the edges. The
+              monitor rows are the brightest part of the plate. */}
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(56% 34% at 50% 43%, rgba(6,9,16,0.95) 0%, rgba(6,9,16,0.90) 55%, rgba(6,9,16,0.50) 82%, rgba(6,9,16,0) 100%)',
+            }}
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(to bottom, rgba(6,9,16,0.55) 0%, rgba(6,9,16,0.18) 25%, rgba(6,9,16,0.18) 55%, rgba(6,9,16,0.72) 86%, rgba(6,9,16,0.97) 100%)',
+            }}
+          />
         </div>
 
         <div className="relative grid min-h-screen place-items-center px-5 py-14">
           <div className="w-full max-w-[640px]">
-            <p className="pm-rise pm-d1 text-center text-[11px] tracking-[0.22em] text-accent uppercase">
+            <p className="pm-rise pm-d1 pm-legible text-center text-[11px] tracking-[0.22em] text-accent uppercase">
               Team formation
             </p>
 
-            <h1 className="pm-rise pm-d2 mt-4 text-center font-display text-[34px] leading-[1.05] font-bold tracking-tight sm:text-[46px]">
+            <h1 className="pm-rise pm-d2 pm-legible mt-4 text-center font-display text-[34px] leading-[1.05] font-bold tracking-tight sm:text-[46px]">
               Describe the project.
               <br />
               <span className="text-accent">Get the team.</span>
             </h1>
 
-            <p className="pm-rise pm-d3 mx-auto mt-5 max-w-[440px] text-center text-[15px] leading-relaxed text-muted">
+            <p className="pm-rise pm-d3 pm-legible mx-auto mt-5 max-w-[460px] text-center text-[15px] leading-relaxed text-ink/85">
               Scored on what each person adds to the team, not how good they look alone. With an
               honest account of what the team still lacks.
             </p>
 
             <div className="pm-rise pm-d4 mt-9">
-              <div className="rounded-2xl border border-line-strong bg-panel/80 p-2 backdrop-blur-md transition-colors focus-within:border-accent">
+              <div className="rounded-2xl border border-line-strong bg-panel/92 p-2 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.95)] backdrop-blur-xl transition-colors focus-within:border-accent">
                 <textarea
                   rows={4}
                   autoFocus
