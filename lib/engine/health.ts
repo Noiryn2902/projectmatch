@@ -25,7 +25,7 @@ export function teamHealth(brief: Brief, members: Person[], seats: number): Team
     if (seen.has(u.req.skillId)) continue;
     seen.add(u.req.skillId);
     gaps.push({
-      label: 'Nobody covers ' + labelOf(u.req.skillId).toLowerCase(),
+      label: 'Nobody covers ' + labelOf(u.req.skillId),
       severity: u.req.weight >= 3 ? 'high' : 'medium',
     });
     if (gaps.length >= 3) break;
