@@ -40,11 +40,11 @@ export default function TeamPanel({
 
           <div className="mt-2.5 flex items-baseline justify-between text-[12px]">
             <span className="text-muted">Requirements covered</span>
-            <span className="font-display text-[15px] font-semibold text-accent">{pct}%</span>
+            <span className="font-display text-[15px] font-semibold text-good">{pct}%</span>
           </div>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-panel-2">
             <div
-              className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-good transition-all duration-500 ease-out"
               style={{ width: `${pct}%` }}
             />
           </div>

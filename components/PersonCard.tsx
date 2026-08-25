@@ -73,7 +73,7 @@ export default function PersonCard({
 
       {(rationale || rationaleLoading) && (
         <p
-          className={`mt-3 border-l-2 border-accent pl-3 text-[12px] leading-relaxed text-accent-ink ${
+          className={`mt-3 border-l-2 border-ai pl-3 text-[12px] leading-relaxed text-ai ${
             rationaleLoading && !rationale ? 'pm-pulse' : ''
           }`}
         >

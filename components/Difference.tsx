@@ -157,11 +157,11 @@ function GapsArt() {
     <div ref={ref}>
       <div className="flex items-baseline justify-between">
         <span className="text-[13px] text-muted">Requirements covered</span>
-        <span className="font-display text-[22px] font-semibold text-accent">91%</span>
+        <span className="font-display text-[22px] font-semibold text-good">91%</span>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-panel-2">
         <span
-          className="block h-full rounded-full bg-accent"
+          className="block h-full rounded-full bg-good"
           style={{ width: on ? '91%' : '0%', transition: 'width 1.1s cubic-bezier(.16,1,.3,1)' }}
         />
       </div>

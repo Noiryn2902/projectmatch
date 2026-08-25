@@ -6,7 +6,7 @@ import Reveal from './Reveal';
 
 function BriefArt() {
   return (
-    <div className="rounded-lg border border-line bg-canvas p-3">
+    <div className="flex h-[132px] flex-col justify-center rounded-lg border border-line bg-canvas p-3">
       <div className="space-y-1.5">
         <span className="block h-1.5 w-[85%] rounded-full bg-line-strong" />
         <span className="block h-1.5 w-[68%] rounded-full bg-line-strong" />
@@ -23,13 +23,13 @@ function BriefArt() {
 
 function RolesArt() {
   return (
-    <div className="rounded-lg border border-line bg-canvas p-3">
+    <div className="flex h-[132px] flex-col justify-center rounded-lg border border-line bg-canvas p-3">
       <div className="flex flex-wrap gap-1.5">
         {['Frontend engineer', 'Product designer', 'ML engineer', 'Domain expert'].map((r, i) => (
           <span
             key={r}
             className={`rounded-full px-2 py-1 text-[9px] ${
-              i === 0 ? 'bg-accent-soft text-accent-ink' : 'bg-panel-2 text-muted'
+              i === 0 ? 'bg-ai-soft text-ai' : 'bg-panel-2 text-muted'
             }`}
           >
             {r}
@@ -43,13 +43,13 @@ function RolesArt() {
 
 function TeamArt() {
   return (
-    <div className="rounded-lg border border-line bg-canvas p-3">
+    <div className="flex h-[132px] flex-col justify-center rounded-lg border border-line bg-canvas p-3">
       <div className="flex items-baseline justify-between text-[9px]">
         <span className="text-muted">Requirements covered</span>
-        <span className="font-display text-[12px] font-semibold text-accent">91%</span>
+        <span className="font-display text-[12px] font-semibold text-good">91%</span>
       </div>
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-panel-2">
-        <span className="block h-full w-[91%] rounded-full bg-accent" />
+        <span className="block h-full w-[91%] rounded-full bg-good" />
       </div>
       <div className="mt-3 space-y-1.5">
         <p className="flex gap-1.5 text-[9px] text-warn">
@@ -68,18 +68,21 @@ function TeamArt() {
 const STEPS = [
   {
     n: '01',
+    tone: 'text-accent',
     title: 'Describe the project',
     body: 'Two lines in plain English. What you are building, roughly how long, and anything that has to be true when it is done.',
     art: <BriefArt />,
   },
   {
     n: '02',
+    tone: 'text-ai',
     title: 'AI reads it into roles',
     body: 'Gemini turns the brief into weighted requirements: which roles, which skills, what level, how many hours a week each seat needs.',
     art: <RolesArt />,
   },
   {
     n: '03',
+    tone: 'text-good',
     title: 'The engine builds the team',
     body: 'Each seat goes to whoever closes the most of what is still missing. Then it tells you what the team it just built still cannot do.',
     art: <TeamArt />,
@@ -102,7 +105,7 @@ export default function HowItWorks() {
         {STEPS.map((s, i) => (
           <Reveal key={s.n} delay={i * 120}>
             <li className="h-full rounded-xl border border-line bg-panel p-5">
-              <span className="font-display text-[12px] font-semibold tracking-widest text-accent">
+              <span className={`font-display text-[12px] font-semibold tracking-widest ${s.tone}`}>
                 {s.n}
               </span>
               <h3 className="mt-3 font-display text-[17px] font-semibold">{s.title}</h3>

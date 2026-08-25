@@ -463,7 +463,9 @@ export default function TeamBuilder({
                 <p className="mt-1.5 text-[12px] text-faint">
                   {brief.roles.length} roles · {brief.durationWeeks} weeks
                   {brief.domain.length > 0 && ' · ' + brief.domain.map(labelOf).join(', ')}
-                  {source && ` · read by ${source}`}
+                  {source && (
+                    <span className="text-ai"> · read by {source}</span>
+                  )}
                 </p>
               </div>
               <button

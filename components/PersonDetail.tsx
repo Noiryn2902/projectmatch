@@ -116,7 +116,7 @@ export default function PersonDetail({
                 <span className="w-[116px] shrink-0 text-[12px] text-muted">{label}</span>
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-panel-2">
                   <span
-                    className="block h-full rounded-full bg-accent transition-all duration-500"
+                    className="block h-full rounded-full bg-good transition-all duration-500"
                     style={{ width: Math.round(v * 100) + '%' }}
                   />
                 </span>
