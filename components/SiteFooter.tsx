@@ -35,7 +35,7 @@ const COLUMNS: { head: string; items: string[] }[] = [
 export default function SiteFooter({ companies }: { companies: Company[] }) {
   return (
     <footer className="border-t border-line bg-panel/40">
-      <div className="mx-auto max-w-[1180px] px-5 py-14">
+      <div className="mx-auto max-w-[1180px] xl:max-w-[1400px] px-5 py-14">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p className="font-display text-[18px] font-bold tracking-tight">

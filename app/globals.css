@@ -166,10 +166,10 @@ body {
    is sitting still. Alternate so it eases back instead of snapping. */
 @keyframes pm-drift {
   from {
-    transform: scale(1.06) translate3d(0, -1.1%, 0);
+    transform: scale(1.015) translate3d(0, -0.7%, 0);
   }
   to {
-    transform: scale(1.13) translate3d(0, 1.1%, 0);
+    transform: scale(1.05) translate3d(0, 0.7%, 0);
   }
 }
 

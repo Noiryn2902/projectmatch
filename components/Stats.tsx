@@ -74,7 +74,7 @@ export default function Stats({
 
   return (
     <div ref={ref} className="border-y border-line bg-panel/40">
-      <div className="mx-auto grid max-w-[1180px] grid-cols-2 gap-y-9 px-5 py-12 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mx-auto grid max-w-[1180px] xl:max-w-[1400px] grid-cols-2 gap-y-9 px-5 py-12 sm:grid-cols-3 lg:grid-cols-5">
         <Stat value={people} label="people in the directory" run={run} />
         <Stat value={companies} label="companies" run={run} />
         <Stat value={offices} label="offices" run={run} />

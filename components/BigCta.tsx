@@ -4,7 +4,7 @@ import Reveal from './Reveal';
 
 export default function BigCta() {
   return (
-    <section className="mx-auto max-w-[1180px] px-5 pb-20">
+    <section className="mx-auto max-w-[1180px] xl:max-w-[1400px] px-5 pb-20">
       <Reveal>
         <div
           className="relative overflow-hidden rounded-2xl px-6 py-14 text-center sm:px-12"

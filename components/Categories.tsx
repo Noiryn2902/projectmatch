@@ -128,8 +128,24 @@ export default function Categories({
     [skills],
   );
 
+  // The skills actually inside each family, most common in the directory first,
+  // so a card shows what it contains rather than just naming itself.
+  const examples = useMemo(() => {
+    const freq: Record<string, number> = {};
+    for (const p of people) for (const s of p.skills) freq[s.skillId] = (freq[s.skillId] ?? 0) + 1;
+    const acc: Record<string, string[]> = {};
+    for (const [g] of ORDER) {
+      acc[g] = skills
+        .filter((s) => s.parent === g)
+        .sort((a, b) => (freq[b.id] ?? 0) - (freq[a.id] ?? 0))
+        .slice(0, 4)
+        .map((s) => s.label);
+    }
+    return acc;
+  }, [people, skills]);
+
   return (
-    <section className="mx-auto max-w-[1180px] px-5 py-20">
+    <section className="mx-auto max-w-[1180px] xl:max-w-[1400px] px-5 py-20">
       <Reveal>
         <h2 className="font-display text-[26px] leading-tight font-bold tracking-tight sm:text-[32px]">
           Every kind of work a team needs
@@ -142,10 +158,29 @@ export default function Categories({
       <ul className="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {ORDER.map(([id, tone], i) => (
           <Reveal key={id} delay={(i % 4) * 70}>
-            <li className="h-full rounded-xl border border-line bg-panel p-5 transition-colors hover:border-line-strong">
-              <span className={tone}>{ICONS[id]}</span>
-              <p className="mt-4 text-[14px] leading-snug font-medium">{labels[id] ?? id}</p>
-              <p className="mt-1 text-[12px] text-faint">{counts[id]?.size ?? 0} people</p>
+            <li className="flex h-full flex-col rounded-xl border border-line bg-panel p-5 transition-colors hover:border-line-strong">
+              <div className="flex items-start justify-between gap-3">
+                <span className={tone}>{ICONS[id]}</span>
+                <span className="font-display text-[17px] leading-none font-semibold text-muted tabular-nums">
+                  {counts[id]?.size ?? 0}
+                </span>
+              </div>
+
+              <p className="mt-4 text-[14.5px] leading-snug font-medium">{labels[id] ?? id}</p>
+              <p className="mt-0.5 text-[11.5px] text-faint">
+                {counts[id]?.size === 1 ? 'person available' : 'people available'}
+              </p>
+
+              <ul className="mt-3.5 flex flex-wrap gap-1">
+                {(examples[id] ?? []).map((label) => (
+                  <li
+                    key={label}
+                    className="rounded bg-panel-2 px-1.5 py-0.5 text-[10.5px] text-muted"
+                  >
+                    {label}
+                  </li>
+                ))}
+              </ul>
             </li>
           </Reveal>
         ))}

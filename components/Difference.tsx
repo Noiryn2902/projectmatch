@@ -219,7 +219,7 @@ export default function Difference({ people }: { people: Person[] }) {
 
   return (
     <section className="border-t border-line">
-      <div className="mx-auto max-w-[1100px] px-5 py-20">
+      <div className="mx-auto max-w-[1100px] xl:max-w-[1320px] px-5 py-20">
         <Reveal>
           <h2 className="max-w-[620px] font-display text-[28px] leading-[1.15] font-bold tracking-tight sm:text-[36px]">
             Why this is not a search box

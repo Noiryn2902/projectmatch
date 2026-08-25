@@ -91,7 +91,7 @@ const STEPS = [
 
 export default function HowItWorks() {
   return (
-    <section className="mx-auto max-w-[1180px] px-5 py-20">
+    <section className="mx-auto max-w-[1180px] xl:max-w-[1400px] px-5 py-20">
       <Reveal>
         <h2 className="font-display text-[26px] leading-tight font-bold tracking-tight sm:text-[32px]">
           How it works
