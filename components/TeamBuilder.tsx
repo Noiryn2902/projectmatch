@@ -61,7 +61,7 @@ export default function TeamBuilder({
   const [browsing, setBrowsing] = useState<{ id: string; label: string } | null>(null);
 
   const [team, setTeam] = useState<TeamState>(() =>
-    autoFill(initialBrief, people, { companyId: null, office: null }),
+    Object.fromEntries(initialBrief.roles.map((r) => [r.id, null])),
   );
   const [activeRoleId, setActiveRoleId] = useState(initialBrief.roles[0]?.id ?? '');
 
@@ -174,7 +174,7 @@ export default function TeamBuilder({
       setSource(json.source ?? null);
       setActiveRoleId(next.roles[0]?.id ?? '');
       reasonCache.current.clear();
-      setTeam(autoFill(next, people, scope));
+      setTeam(Object.fromEntries(next.roles.map((r) => [r.id, null])));
       setBriefOpen(false);
       setStarted(true);
     } catch (e) {
@@ -194,10 +194,13 @@ export default function TeamBuilder({
 
   function runAutoFill() {
     setBusy(true);
-    requestAnimationFrame(() => {
+    // setTimeout, not requestAnimationFrame: rAF is throttled to nothing in a
+    // background or non-compositing tab, which leaves the button stuck on
+    // Assembling… and the seats never fill. A timeout always fires.
+    setTimeout(() => {
       setTeam(autoFill(brief, people, scope));
       setBusy(false);
-    });
+    }, 0);
   }
 
   function toggle(personId: string) {
@@ -471,7 +474,7 @@ export default function TeamBuilder({
           ) : (
             <div className="flex items-start justify-between gap-4 p-4">
               <div className="min-w-0">
-                <p className="text-[14px] leading-relaxed">{brief.text}</p>
+                <p className="line-clamp-2 text-[14px] leading-relaxed">{brief.text}</p>
                 <p className="mt-1.5 text-[12px] text-faint">
                   {brief.roles.length} roles · {brief.durationWeeks} weeks
                   {brief.domain.length > 0 && ' · ' + brief.domain.map(labelOf).join(', ')}

@@ -108,15 +108,44 @@ export default function TeamPanel({
           })}
         </ul>
 
-        <div className="px-3 py-3">
+        <div className="p-3">
           <button
             type="button"
             onClick={onAutoFill}
             disabled={busy}
-            className="w-full rounded-lg bg-accent px-3 py-2 text-[13px] font-medium text-panel transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-xl px-3 py-3 text-[13.5px] font-medium text-canvas transition-transform hover:scale-[1.015] disabled:opacity-60"
+            style={{ background: 'linear-gradient(110deg, var(--accent) 0%, #d9c15a 45%, var(--good) 100%)' }}
           >
-            {busy ? 'Optimising…' : 'Auto-fill team'}
+            {busy && (
+              <span
+                aria-hidden
+                className="pm-sweep absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+              />
+            )}
+            <svg
+              aria-hidden
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="relative size-[18px] shrink-0"
+            >
+              <circle cx="5" cy="6" r="2" />
+              <circle cx="5" cy="18" r="2" />
+              <circle cx="19" cy="12" r="2.4" />
+              <path d="M7 6.6c4 1.2 6.5 2.9 9.8 4.6M7 17.4c4-1.2 6.5-2.9 9.8-4.6" />
+            </svg>
+            <span className="relative">{busy ? 'Assembling…' : 'Assemble the team'}</span>
           </button>
+
+          {health.filled === 0 && !busy && (
+            <p className="mt-2.5 text-center text-[11.5px] leading-relaxed text-faint">
+              Every seat is empty. This fills each one with whoever closes the most of what is
+              still missing.
+            </p>
+          )}
         </div>
       </section>
 

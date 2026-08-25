@@ -46,7 +46,12 @@ export default function Filters({
   return (
     <section className="rounded-xl border border-line bg-panel">
       <div className="flex items-center justify-between border-b border-line px-4 py-3">
-        <h2 className="font-display text-[15px] font-semibold">Filters</h2>
+        <h2 className="font-display text-[15px] font-semibold">
+          Filters
+          <span className="ml-2 align-middle text-[12px] font-normal text-faint">
+            {resultCount} {resultCount === 1 ? 'candidate' : 'candidates'}
+          </span>
+        </h2>
         {dirty && (
           <button
             type="button"
@@ -123,9 +128,6 @@ export default function Filters({
           </div>
         )}
 
-        <p className="border-t border-line pt-3 text-[12px] text-faint">
-          {resultCount} {resultCount === 1 ? 'candidate' : 'candidates'}
-        </p>
       </div>
     </section>
   );
