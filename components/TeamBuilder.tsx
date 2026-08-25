@@ -17,6 +17,8 @@ const SORTS: { id: SortMode; label: string }[] = [
   { id: 'sameOffice', label: 'By office' },
 ];
 
+const EXAMPLE_LABELS = ['Support ticket reports', 'Nurse handover app', 'Carbon dashboard'];
+
 const EXAMPLES = [
   'Internal tool that turns customer support tickets into weekly theme reports. Roughly 6 weeks. It needs to actually ship, not stay a prototype.',
   'A mobile app that helps nurses hand over patient notes between shifts. Three months, hospital pilot first.',
@@ -32,7 +34,9 @@ export default function TeamBuilder({
   companies: Company[];
   initialBrief: Brief;
 }) {
-  const [briefText, setBriefText] = useState(initialBrief.text);
+  // Nothing but the input shows until the user has actually asked for something.
+  const [started, setStarted] = useState(false);
+  const [briefText, setBriefText] = useState('');
   const [brief, setBrief] = useState<Brief>(initialBrief);
   const [briefOpen, setBriefOpen] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -160,6 +164,7 @@ export default function TeamBuilder({
       reasonCache.current.clear();
       setTeam(autoFill(next, people, scope));
       setBriefOpen(false);
+      setStarted(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong reading that brief.');
     } finally {
@@ -183,13 +188,101 @@ export default function TeamBuilder({
     }));
   }
 
+  if (!started) {
+    return (
+      <div className="grid min-h-screen place-items-center px-5 py-12">
+        <div className="pm-in w-full max-w-[620px]">
+          <h1 className="text-center font-display text-[30px] leading-tight font-bold tracking-tight sm:text-[38px]">
+            Project<span className="text-accent">Match</span>
+          </h1>
+          <p className="mx-auto mt-3 max-w-[470px] text-center text-[15px] leading-relaxed text-muted">
+            Describe your project in a line or two. Get a whole team back, and an honest list of
+            what that team is still missing.
+          </p>
+
+          <div className="mt-7 rounded-2xl border border-line bg-panel p-2 focus-within:border-accent">
+            <textarea
+              rows={4}
+              autoFocus
+              value={briefText}
+              onChange={(e) => {
+                setBriefText(e.target.value);
+                if (error) setError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) analyze();
+              }}
+              placeholder="What are you building, roughly how long, and anything that has to be true when it is done."
+              aria-label="Describe your project"
+              className="w-full resize-none bg-transparent p-3 text-[15px] leading-relaxed outline-none placeholder:text-faint"
+            />
+            <div className="flex items-center justify-between gap-3 px-2 pb-1">
+              <span className="text-[11px] text-faint">
+                {briefText.trim().length > 0 ? 'Ctrl + Enter to send' : 'No signup, no database'}
+              </span>
+              <button
+                type="button"
+                onClick={analyze}
+                disabled={analyzing}
+                className="rounded-xl bg-accent px-5 py-2.5 text-[14px] font-medium text-panel transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {analyzing ? 'Reading your brief…' : 'Find my team'}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <p role="alert" className="mt-3 text-center text-[13px] text-warn">
+              {error}
+            </p>
+          )}
+
+          <div className="mt-6">
+            <p className="text-center text-[12px] text-faint">Or start from one of these</p>
+            <div className="mt-2.5 flex flex-wrap justify-center gap-2">
+              {EXAMPLES.map((ex, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setBriefText(ex)}
+                  className="max-w-full rounded-full border border-line px-3.5 py-1.5 text-[12px] text-muted transition-colors hover:border-accent hover:text-accent"
+                >
+                  {EXAMPLE_LABELS[i]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <p className="mt-9 text-center text-[12px] text-faint">
+            {people.length} people across {companies.length} companies ·{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setBriefText(initialBrief.text);
+                setStarted(true);
+              }}
+              className="text-accent underline underline-offset-2"
+            >
+              skip to a worked example
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-line bg-canvas/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1180px] items-center gap-3 px-5 py-3 sm:gap-6">
-          <span className="font-display text-[17px] font-bold tracking-tight whitespace-nowrap">
+          <button
+            type="button"
+            onClick={() => setStarted(false)}
+            aria-label="Start a new project brief"
+            className="font-display text-[17px] font-bold tracking-tight whitespace-nowrap"
+          >
             Project<span className="text-accent">Match</span>
-          </span>
+          </button>
 
           <div className="min-w-0 flex-1">
             <input
