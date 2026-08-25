@@ -105,9 +105,11 @@ const ORDER: [string, string][] = [
 export default function Categories({
   people,
   skills,
+  onPick,
 }: {
   people: Person[];
   skills: Skill[];
+  onPick: (label: string) => void;
 }) {
   // Counted from the directory itself, so these can never drift from the data.
   const counts = useMemo(() => {
@@ -151,14 +153,20 @@ export default function Categories({
           Every kind of work a team needs
         </h2>
         <p className="mt-2 max-w-[520px] text-[14px] leading-relaxed text-muted">
-          Twelve families of skill, connected by a graph so neighbouring skills still count.
+          Twelve families of skill, connected by a graph so neighbouring skills still count. Pick
+          one to start a brief with it.
         </p>
       </Reveal>
 
       <ul className="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {ORDER.map(([id, tone], i) => (
           <Reveal key={id} delay={(i % 4) * 70}>
-            <li className="flex h-full flex-col rounded-xl border border-line bg-panel p-5 transition-colors hover:border-line-strong">
+            <li className="h-full">
+              <button
+                type="button"
+                onClick={() => onPick(labels[id] ?? id)}
+                className="flex h-full w-full cursor-pointer flex-col rounded-xl border border-line bg-panel p-5 text-left transition-colors hover:border-accent hover:bg-panel-2"
+              >
               <div className="flex items-start justify-between gap-3">
                 <span className={tone}>{ICONS[id]}</span>
                 <span className="font-display text-[17px] leading-none font-semibold text-muted tabular-nums">
@@ -181,6 +189,7 @@ export default function Categories({
                   </li>
                 ))}
               </ul>
+              </button>
             </li>
           </Reveal>
         ))}

@@ -311,10 +311,22 @@ export default function TeamBuilder({
           timezones={new Set(people.map((p) => p.utcOffset)).size}
         />
 
-        <Categories people={people} skills={SKILLS} />
+        <Categories
+          people={people}
+          skills={SKILLS}
+          onPick={(label) => {
+            setBriefText(
+              `A project that needs strong ${label.toLowerCase()} work. Roughly 8 weeks, and it has to actually ship.`,
+            );
+            setError(null);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            // wait for the scroll before focusing, or the browser jumps back down
+            setTimeout(() => document.querySelector('textarea')?.focus(), 650);
+          }}
+        />
 
         <Band
-          src="/media/band-team.webp"
+          src="/media/band-team-2.webp"
           kicker="The problem"
           line="The person you need is usually one connection further away than you can see."
         />
@@ -324,7 +336,7 @@ export default function TeamBuilder({
         <Difference people={people} />
 
         <Band
-          src="/media/band-desk.webp"
+          src="/media/band-desk-2.webp"
           kicker="The cost"
           line="Most teams find out what they were missing six weeks in, not on day one."
         />
