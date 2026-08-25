@@ -109,7 +109,7 @@ export default function Categories({
 }: {
   people: Person[];
   skills: Skill[];
-  onPick: (label: string) => void;
+  onPick: (id: string, label: string) => void;
 }) {
   // Counted from the directory itself, so these can never drift from the data.
   const counts = useMemo(() => {
@@ -153,8 +153,8 @@ export default function Categories({
           Every kind of work a team needs
         </h2>
         <p className="mt-2 max-w-[520px] text-[14px] leading-relaxed text-muted">
-          Twelve families of skill, connected by a graph so neighbouring skills still count. Pick
-          one to start a brief with it.
+          Twelve families of skill, connected by a graph so neighbouring skills still count. Open
+          one to see who is in it.
         </p>
       </Reveal>
 
@@ -164,7 +164,7 @@ export default function Categories({
             <li className="h-full">
               <button
                 type="button"
-                onClick={() => onPick(labels[id] ?? id)}
+                onClick={() => onPick(id, labels[id] ?? id)}
                 className="flex h-full w-full cursor-pointer flex-col rounded-xl border border-line bg-panel p-5 text-left transition-colors hover:border-accent hover:bg-panel-2"
               >
               <div className="flex items-start justify-between gap-3">

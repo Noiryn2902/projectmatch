@@ -17,6 +17,7 @@ import Band from './Band';
 import Categories from './Categories';
 import BigCta from './BigCta';
 import SiteFooter from './SiteFooter';
+import Directory from './Directory';
 
 const SORTS: { id: SortMode; label: string }[] = [
   { id: 'bestFit', label: 'Best fit for this team' },
@@ -57,6 +58,7 @@ export default function TeamBuilder({
   const [seniority, setSeniority] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
   const [exploring, setExploring] = useState<string | null>(null);
+  const [browsing, setBrowsing] = useState<{ id: string; label: string } | null>(null);
 
   const [team, setTeam] = useState<TeamState>(() =>
     autoFill(initialBrief, people, { companyId: null, office: null }),
@@ -314,15 +316,7 @@ export default function TeamBuilder({
         <Categories
           people={people}
           skills={SKILLS}
-          onPick={(label) => {
-            setBriefText(
-              `A project that needs strong ${label.toLowerCase()} work. Roughly 8 weeks, and it has to actually ship.`,
-            );
-            setError(null);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            // wait for the scroll before focusing, or the browser jumps back down
-            setTimeout(() => document.querySelector('textarea')?.focus(), 650);
-          }}
+          onPick={(id, label) => setBrowsing({ id, label })}
         />
 
         <Band
@@ -348,6 +342,17 @@ export default function TeamBuilder({
         <BigCta />
 
         <SiteFooter companies={companies} />
+
+        {browsing && (
+          <Directory
+            categoryId={browsing.id}
+            categoryLabel={browsing.label}
+            people={people}
+            skills={SKILLS}
+            companies={companies}
+            onClose={() => setBrowsing(null)}
+          />
+        )}
       </div>
     );
   }
