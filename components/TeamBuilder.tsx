@@ -21,12 +21,12 @@ import Directory from './Directory';
 import SiteNav from './SiteNav';
 import Workspace from './Workspace';
 
-const SORTS: { id: SortMode; label: string }[] = [
-  { id: 'bestFit', label: 'Best fit for this team' },
-  { id: 'skillMatch', label: 'Closest skills' },
-  { id: 'experience', label: 'Most experience' },
-  { id: 'availability', label: 'Most available' },
-  { id: 'sameOffice', label: 'By office' },
+const SORTS: { id: SortMode; label: string; short: string }[] = [
+  { id: 'bestFit', label: 'Best fit for this team', short: 'Best fit' },
+  { id: 'skillMatch', label: 'Closest skills', short: 'Closest skills' },
+  { id: 'experience', label: 'Most experience', short: 'Experience' },
+  { id: 'availability', label: 'Most available', short: 'Availability' },
+  { id: 'sameOffice', label: 'By office', short: 'Office' },
 ];
 
 const EXAMPLES = [
@@ -534,10 +534,31 @@ export default function TeamBuilder({
                 </h2>
                 <p className="mt-0.5 text-[12px] text-faint">
                   {candidates.length} {candidates.length === 1 ? 'candidate' : 'candidates'}
-                  {' · ranked by what they add to this team'}
+                  {sort === 'bestFit'
+                    ? ' · ranked by what they add to this team'
+                    : ' · sorted by ' + SORTS.find((s) => s.id === sort)?.label.toLowerCase()}
                 </p>
               </div>
 
+              {/* Pills rather than a select: all five options stay readable at a
+                  glance, and the active one is visible without opening anything. */}
+              <div className="flex flex-wrap gap-1.5">
+                {SORTS.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSort(s.id)}
+                    aria-pressed={sort === s.id}
+                    className={`rounded-full border px-3 py-1.5 text-[12px] transition-colors ${
+                      sort === s.id
+                        ? 'border-accent bg-accent-soft text-accent-ink'
+                        : 'border-line text-muted hover:border-line-strong hover:text-ink'
+                    }`}
+                  >
+                    {s.short}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {candidates.length === 0 ? (
@@ -557,7 +578,7 @@ export default function TeamBuilder({
               </div>
             ) : (
               <div>
-                <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <ul className="grid gap-3 md:grid-cols-2 min-[1800px]:grid-cols-3">
                   {candidates.slice(0, 20).map((c, i) => {
                     // The rationale belongs to the top-ranked candidate and sits
                     // inside their card, rather than repeating it in a banner above.

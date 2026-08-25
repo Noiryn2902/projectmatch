@@ -115,41 +115,44 @@ export default function TeamPanel({
             type="button"
             onClick={onAutoFill}
             disabled={busy}
-            className="group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-xl px-3 py-3 text-[13.5px] font-medium text-canvas transition-transform hover:scale-[1.015] disabled:opacity-60"
-            style={{ background: 'linear-gradient(110deg, var(--accent) 0%, #d9c15a 45%, var(--good) 100%)' }}
+            className="relative flex w-full items-center gap-3 overflow-hidden rounded-xl bg-accent px-3.5 py-3 text-left transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {busy && (
               <span
                 aria-hidden
-                className="pm-sweep absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                className="pm-sweep absolute inset-0 bg-gradient-to-r from-transparent via-white/45 to-transparent"
               />
             )}
-            <svg
+
+            <span
               aria-hidden
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="relative size-[18px] shrink-0"
+              className="relative grid size-8 shrink-0 place-items-center rounded-lg bg-canvas/15"
             >
-              <circle cx="5" cy="6" r="2" />
-              <circle cx="5" cy="18" r="2" />
-              <circle cx="19" cy="12" r="2.4" />
-              <path d="M7 6.6c4 1.2 6.5 2.9 9.8 4.6M7 17.4c4-1.2 6.5-2.9 9.8-4.6" />
-            </svg>
-            <span className="relative">
-              {busy ? 'Assembling…' : health.filled === 0 ? 'Assemble the team' : 'Rebuild the team'}
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="size-[17px] text-canvas"
+              >
+                <circle cx="4.5" cy="5.5" r="1.9" />
+                <circle cx="4.5" cy="18.5" r="1.9" />
+                <circle cx="19" cy="12" r="2.3" />
+                <path d="M6.4 6.6 16.8 11M6.4 17.4 16.8 13" />
+              </svg>
+            </span>
+
+            <span className="relative min-w-0">
+              <span className="block text-[13.5px] leading-tight font-medium text-canvas">
+                {busy ? 'Assembling…' : health.filled === 0 ? 'Assemble the team' : 'Rebuild the team'}
+              </span>
+              <span className="mt-0.5 block text-[11px] leading-tight text-canvas/70">
+                Fills every seat by contribution
+              </span>
             </span>
           </button>
-
-          {health.filled === 0 && !busy && (
-            <p className="mt-2.5 text-center text-[11.5px] leading-relaxed text-faint">
-              Every seat is empty. This fills each one with whoever closes the most of what is
-              still missing.
-            </p>
-          )}
         </div>
       </section>
 
