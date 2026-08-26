@@ -1,6 +1,6 @@
 import type { Brief, Company, Person } from '@/lib/types';
-import peopleData from '@/lib/data/people.json';
-import companiesData from '@/lib/data/companies.json';
+import peopleData from '@/lib/seed/people.json';
+import companiesData from '@/lib/seed/companies.json';
 import { fallbackBrief } from '@/lib/ai/fallback';
 import TeamBuilder from '@/components/TeamBuilder';
 

@@ -1,0 +1,489 @@
+# ProjectMatch — Improvement Plan
+
+**Status:** working document. Written 27 Aug 2026, after being selected for the PromptWars top 20.
+**Purpose:** the single place that records what we are building, why, in what order, and what we
+decided *not* to do. If a future session needs context, start here rather than re-deriving it.
+
+**Goal, stated by the owner:** make this a real product, not a competition entry. "Presenting the
+best product" beats placing first. That is the tiebreaker for every call below.
+
+---
+
+## 0. How to read this
+
+| Marker | Meaning |
+|---|---|
+| **Committed** | Decided. Build it. |
+| **Proposed** | Recommended, not yet approved. |
+| **Deferred** | Considered seriously, deliberately not now. Reason recorded. |
+| **Declined** | Rejected on principle, not on time. Reason recorded. |
+
+Nothing in here is a feature list for its own sake. Every item answers one of three questions:
+does it make the product *real*, does it make the engine *smarter*, or does it make the decision
+the product produces *defensible*.
+
+---
+
+## 1. The decision underneath everything
+
+**Committed: ProjectMatch is internal organisational team formation. It is not an open marketplace.**
+
+The product was two products in one coat — a company staffing project teams from its own people,
+and a marketplace where strangers find each other. Feature requests kept splitting along that seam.
+
+Internal org wins because:
+
+- **Cold start is solved by one roster import**, not by luck. A marketplace with eight signed-up
+  strangers is worthless; an org with one uploaded CSV has 500 people on day one.
+- **The data can be true.** Hours, seniority, office and timezone are things an employer knows.
+  A stranger's self-reported "20 hrs/week free" is fiction nobody will ever update.
+- **Consent is tractable** inside an employment relationship. Scraping strangers is not.
+- **The schema already committed to it.** `lib/types.ts` has `companyId`, `office`, `utcOffset`,
+  `hoursPerWeek`. That is an internal staffing model, built before it was named.
+- **It matches the problem statement** — team *formation*, not networking.
+
+Individuals can still self-onboard, and an org that never imports a roster still works. But the
+product is aimed at the organisation.
+
+---
+
+## 2. Where it stands today
+
+### What is genuinely good
+
+- **The engine.** 443 lines of pure TypeScript across `graph.ts` (63), `score.ts` (137),
+  `assemble.ts` (187), `health.ts` (56). No React, no network, no IO. 51 assertions in
+  `scripts/test-engine.ts`. This is the only part of the product nobody else has.
+- **The core idea holds.** `marginalGain()` scores what a person adds to *the team being built*,
+  not how good they look alone. With a frontend developer seated, a second frontend developer
+  scores 0% while a junior designer scores 12%.
+- **AI discipline.** Three actions on one route, Gemini constrained to the 82-skill vocabulary via
+  `responseSchema`, a three-model cascade in `lib/ai/client.ts`, and a deterministic fallback for
+  every call in `lib/ai/fallback.ts`. The app works with the network unplugged. **Gemini never
+  picks the team** — results stay reproducible.
+- **`npm run verify`** = typecheck + lint + 51 tests + build, all passing.
+- **AI evaluation 95.92/100** — Code Quality 86, Security 98, Efficiency 100, Testing 98,
+  Accessibility 96, Problem Statement Alignment 100.
+
+### What is theatre
+
+| Area | Reality today |
+|---|---|
+| Identity | `lib/session.ts` writes a name to `localStorage`. Nothing is verified. |
+| People | 60 fictional people from `scripts/seed.mjs`. Nobody can ever be added. |
+| Persistence | Nothing survives a refresh. Chat rides `BroadcastChannel`, one machine only. |
+| Joining | No path in. You browse a fixed pool and you are not in it. |
+| Invitations | Do not exist. Assemble a team and chat opens. Nobody was asked; nobody can decline. |
+| Skill levels | 411 seeded records, all trusted equally. No provenance, no recency. |
+| Team lifecycle | One shot. `health.ts` measures at assembly, then the story ends. |
+| Org control | `ScopeFilter` filters by company/office, but no one *owns* an org and nothing imports. |
+| Consent | `openToProjects` is a seeded boolean, not a person's choice. No edit, withdraw, or delete. |
+| Learning | Nothing is recorded. Every ranking starts from zero history. |
+
+### Architectural findings — the ones that block the roadmap
+
+1. **There is no routing.** `app/` contains exactly one page. `app/page.tsx` renders
+   `TeamBuilder.tsx`, and that one 662-line client component imports the landing sections, the
+   directory, the builder and the 815-line `Workspace.tsx`. The entire application is a single
+   route with conditional rendering.
+
+   **This blocks Phase 2 outright.** An invitation email links to a URL. There are no URLs. Real
+   routes are a prerequisite for invitations, shareable team proposals, and org pages — not polish.
+
+2. **The interface has outgrown the engine, 8.6 to 1.** 3,802 lines of components against 443
+   lines of engine. Two files carry most of it: `Workspace.tsx` (815) and `TeamBuilder.tsx` (662).
+   This is the direct cause of Code Quality being the lowest score at 86, and every new flow makes
+   it worse unless files are split as we go.
+
+3. **The only data access pattern is client-side.** `lib/live.ts` reads
+   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in the browser. That directly
+   contradicts the decision to put the database behind a backend.
+
+4. **The engine has no IO boundary.** It reads `Person[]` passed in from JSON imported at the
+   page level. That is actually the right shape — it means swapping the source from seeded JSON
+   to Postgres does not touch the engine at all. Preserve this property deliberately.
+
+---
+
+## 3. What to remove
+
+Deletions matter as much as additions. Each of these either contradicts a decision above or will
+actively fight the work.
+
+### Delete
+
+| Target | Why | When |
+|---|---|---|
+| `lib/session.ts` (87 lines) | Fake identity. Replaced wholesale by real auth. Every feature built on it inherits the lie. | Phase 0 |
+| `BroadcastChannel` chat mode in `lib/live.ts` | A clever demo hack for syncing two windows on one machine. Once a backend exists it is a second code path to maintain that no real user will ever hit. Keep one transport. | Phase 0 |
+| Browser-side **data access** via `NEXT_PUBLIC_SUPABASE_*` | All querying moves server-side. **Correction:** the vars themselves stay — the browser needs the URL and anon key to open a realtime socket, which is the one deliberate exception. They are not secrets and RLS assumes they are known. What goes is the browser *querying tables*. | Phase 0 |
+| The `esm.sh` runtime import in `lib/live.ts` | The Supabase SDK is fetched from a CDN at runtime in the browser, via `await import('https://esm.sh/...')`. That is a supply-chain dependency on a third party at page load, invisible to the lockfile. Replaced by a real dependency. | Phase 0 |
+| `LIVE_CHAT_SETUP.md` | Documents the two-mode chat story that Phase 0 removes. Becomes actively misleading. Fold anything still true into the main docs. | Phase 0 |
+| `components/Proof.tsx` (93 lines) | Fabricated testimonial quotes attributed to fictional people. Fine while everything is openly fictional. **A credibility hazard the moment real users exist alongside them** — invented endorsements sitting next to a real org's data is the kind of thing that is hard to explain afterwards. | Before real data |
+| `sameOffice` sort mode | A filter wearing a sort's clothes, in a product whose entire thesis is that filtering is the wrong frame. `types.ts:74`, `assemble.ts:88`, `TeamBuilder.tsx:29`. | Engine phase |
+
+### Split, don't delete
+
+| Target | Action |
+|---|---|
+| `TeamBuilder.tsx` (662) | Currently the app's de facto router. Decompose along the real routes introduced in Phase 0. |
+| `Workspace.tsx` (815) | Split by concern: team panel, chat, health, invitations. No file over ~300 lines. |
+| Landing sections (`Band`, `BigCta`, `Categories`, `HowItWorks`, `Stats` ≈ 570 lines) | Move to a marketing route that is not loaded by the product shell. A signed-in user should not be shipping the landing page's JavaScript. |
+
+### Keep, explicitly
+
+- `components/Difference.tsx` — this is the 0% / 12% proof. It is the crown jewel. Do not touch it
+  except to strengthen it.
+- The seeded 60 people — they become a clearly labelled demo organisation, never merged into real
+  org results. **Demo data must be isolated at the query level, not by convention.**
+- Every deterministic AI fallback.
+
+---
+
+## 4. Target architecture
+
+### Layering rule
+
+```
+lib/engine/     pure. no IO, no React, no network, no imports from anything below.
+     ↑
+lib/data/       repositories. server-only. the sole place SQL lives.
+     ↑
+app/            route handlers, server components, server actions. transport + auth.
+     ↑
+components/     presentation. never imports lib/data directly.
+```
+
+The engine's purity is the most valuable structural property in the codebase. It is why the tests
+are fast and honest, and it is why the database can be swapped in without touching the scoring.
+**Guard it:** the engine keeps taking plain `Person[]` and returning plain results. Nothing async
+ever enters it.
+
+### Next.js 16 specifics — the standard recipes are stale
+
+This project runs Next 16.3.2 / React 19.2.8. Verified against `node_modules/next/dist/docs/`:
+
+- **`middleware.ts` is deprecated and renamed to `proxy.ts`.** Every Supabase SSR auth guide on
+  the internet puts session refresh in middleware. That is wrong here. Codemod exists:
+  `npx @next/codemod@canary middleware-to-proxy .`
+- **Request APIs are async.** `cookies()` and `headers()` must be awaited — which is exactly where
+  Supabase's cookie adapter plugs in.
+- Caching APIs changed in 16 (`revalidateTag`, `updateTag`, `refresh`, `cacheLife`/`cacheTag`),
+  and PPR is available. Read the docs before relying on any caching behaviour from memory.
+
+### Transport choices
+
+- **Server Actions** for mutations driven by the app's own forms (create project, invite, accept,
+  edit profile).
+- **Route Handlers** for anything reached from outside: the invitation accept link, future webhooks,
+  and the existing `/api/ai`.
+- **Realtime chat** is the one deliberate exception to "no database in the browser" — realtime
+  needs a socket. It subscribes with RLS behind it; writes still go through the backend.
+
+### Routes to introduce (Phase 0)
+
+```
+/                        marketing (not loaded by the product shell)
+/app                     signed-in home
+/app/org/[orgId]         roster, import, admin
+/app/project/[id]        the brief, the team, health, chat
+/invite/[token]          accept or decline — must work before the recipient has an account
+/auth/*                  sign-in, callback, sign-out
+```
+
+### Security posture
+
+- All authorisation server-side. RLS on every table as defence in depth, never as the only gate.
+- Service-role key server-only. Never `NEXT_PUBLIC_`.
+- Rate limiting on `/api/ai` — currently absent and currently free to abuse.
+- An audit trail for staffing decisions (see §6.8).
+
+---
+
+## 5. Data model sketch
+
+```
+orgs                id, name, created_by
+memberships         org_id, user_id, role (owner | admin | member)
+people              id, org_id, user_id?, name, title, office, utc_offset,
+                    years_exp, seniority, hours_per_week, visibility, open_to_projects
+skills              id, label, parent, related[]          (the 82-skill vocabulary)
+person_skills       person_id, skill_id, level,
+                    provenance (self | extracted | endorsed | verified),
+                    source, last_used_at, confidence
+endorsements        person_skill_id, endorsed_by, note, created_at
+projects            id, org_id, brief_text, duration_weeks, domain[], status
+roles               project_id, title, hours_needed
+requirements        role_id, skill_id, min_level, weight
+seats               project_id, role_id, person_id?, state (open | invited | filled)
+allocations         person_id, project_id, hours_per_week, starts_at, ends_at
+invitations         id, seat_id, person_id, token, status (pending | accepted | declined |
+                    expired | revoked), sent_at, responded_at
+messages            project_id, author_id, body, at
+outcomes            project_id, person_id, accepted, completed, would_work_again
+audit_log           actor_id, action, subject, payload, at
+```
+
+Two fields carry more weight than they look:
+
+- **`person_skills.provenance`** — who says this level is true. See §6.5.
+- **`allocations`** — the difference between "has 20 hours a week" and "has 20 hours a week that
+  are not already spent". See §6.1.
+
+---
+
+## 6. The engine phase — what actually makes it best
+
+**This is the most important section in the document.**
+
+Phases 0–4 below make ProjectMatch *real*. Not one of them makes it *smarter*. At the end of the
+plumbing the engine knows exactly what it knows today. Since the engine is the only differentiator,
+the items here are what raise the ceiling.
+
+### 6.1 Capacity is fiction — model allocation **[Proposed, highest value]**
+
+`hoursPerWeek` floats free of reality. A person can be seated on unlimited teams simultaneously and
+the engine never notices. Real staffing is allocation: capacity minus existing commitments.
+
+Modelling it unlocks **conflict detection** — *"this team is only possible if you take Priya off
+Atlas."* That is not a feature, that is the job the tool exists to do. Nothing else on this list
+changes the product's usefulness as much.
+
+### 6.2 `coverage()` is blind to key-person risk **[Proposed, cheapest win]**
+
+`score.ts:22` takes the **max** satisfaction across members. One person covering Kubernetes and
+three people covering it produce an identical number — so a team with a single point of failure
+currently scores as perfectly healthy.
+
+Counting how many members clear each requirement is a few lines and yields **bus factor**, which
+real organisations genuinely fear and no competitor will show.
+
+### 6.3 One answer, where real decisions need options **[Proposed]**
+
+Today: here is your team. Better: two or three *distinct* teams with named tradeoffs — "fastest,
+but payments rests on one person" versus "two weeks slower, no key-person risk". Pure engine work.
+
+It changes the product's posture from oracle to advisor, which is both more honest and more useful.
+
+### 6.4 Infeasibility diagnosis **[Proposed]**
+
+When a brief cannot be staffed, the product simply fails. A real optimiser says *why*, and what is
+cheapest to change: *"not staffable this quarter — hire one senior backend, or extend three weeks,
+or drop the ML requirement."* Runs on coverage math that already exists. The smartest-looking
+feature in the product for the least new machinery.
+
+### 6.5 Skill trust: provenance **and** recency **[Committed — Phase 3]**
+
+The engine is only ever as good as `PersonSkill.level`. Seeded, those are perfect. Filled in by
+real humans, everyone is a five and the scoring quietly becomes noise. This is the weakest link in
+the entire model and nobody has pointed at it yet.
+
+Two fields fix it:
+
+- **Provenance** — self-declared / extracted from a resume / endorsed by a colleague / verified by
+  the org. The engine **discounts what it cannot verify**, and the interface says so.
+- **Recency** (`last_used_at`) — a skill last used four years ago is not current. Provenance
+  answers *who says so*; recency answers *how stale*. Together they make levels honest over time.
+
+### 6.6 Cost **[Proposed]**
+
+Every real allocation problem is budgeted. `seniority × hours` gives cost almost free, and then the
+engine answers the question managers actually ask: *"Team B costs 1.4× for six points of coverage —
+worth it?"* Without cost this is a recommender. With cost it is an optimiser.
+
+### 6.7 Growth-aware staffing **[Proposed — the signature move]**
+
+Staffing is also how people develop, and nobody models it. A junior seated beside a senior in the
+same skill is a stretch assignment. `health.ts` already flags "no senior presence" — the inverse is
+an opportunity signal.
+
+Optimising for team output **plus individual development** rather than output alone is humane, is a
+genuine priority for the people who would buy this, and is almost certainly unique in this field.
+This is the one people remember afterwards.
+
+### 6.8 Fairness: opportunity concentration **[Proposed]**
+
+A deterministic engine over a fixed pool concentrates opportunity — the top ten people get every
+project and everyone else becomes invisible. That is a real harm in an internal staffing tool, it
+is measurable per person over time, and surfacing it both fixes the harm and pre-empts the sharpest
+criticism anyone could make of this product.
+
+### 6.9 "Why wasn't I picked?" **[Proposed]**
+
+Deterministic scoring means this can be answered exactly. In internal staffing it is a conversation
+that actually happens, and an auditable, non-discriminatory answer is a requirement, not a nicety.
+Pairs with the audit log.
+
+### 6.10 Locked seats and re-optimisation **[Proposed]**
+
+Managers always have a "I want X on this" constraint. Pin a person, re-optimise around them. This
+is table stakes for real use and the assembly pass largely supports it already.
+
+### 6.11 Explain the *swap*, not just the person **[Proposed]**
+
+"Swapping A for B costs three points of coverage and gains six hours of overlap." The delta is what
+a decision-maker needs; the absolute score is not.
+
+### 6.12 Prior collaboration **[Proposed, depends on §Phase 4]**
+
+People who have worked together ramp faster. Once outcomes are recorded, prior collaboration
+becomes a real, earned signal rather than a guess.
+
+### 6.13 Declarative constraints on the brief **[Proposed]**
+
+Budget, deadline, must-include, must-exclude, required timezone band are currently UI-level filters.
+Making them first-class fields on `Brief` is cleaner architecturally and is what makes the optimiser
+story true rather than rhetorical.
+
+### 6.14 Brief coaching **[Proposed, small]**
+
+Garbage in, garbage out. *"Your brief does not say how long or how many hours a week — the team it
+produces will be wrong."* Cheap, and it improves every downstream result.
+
+### 6.15 Scale benchmark **[Proposed, one hour]**
+
+60 people is nothing. Benchmark the engine at 10,000 and put the number on screen. An hour of work,
+and it makes Efficiency 100 mean something concrete.
+
+---
+
+## 7. Roadmap
+
+Phases are a dependency chain. Each depends on the one above.
+
+### Phase 0 — Real login, real database, real routes
+
+The unglamorous one, and the one everything else stands on.
+
+- Supabase Auth: email magic link + GitHub OAuth. Cookie sessions, server-verified.
+- Session refresh in **`proxy.ts`**, not `middleware.ts` (see §4).
+- Postgres schema and migrations, RLS written on day one rather than retrofitted.
+- **Real routes** (see §4) — without them Phase 2 cannot exist.
+- All data access moves server-side. `lib/data/` repositories become the only place SQL lives.
+- The seeded 60 migrate in as an isolated demo org, still labelled fictional.
+- Delete `lib/session.ts`, the `BroadcastChannel` path, and `LIVE_CHAT_SETUP.md`.
+- A **guest route into the demo org**: sign-in is required to *act*, never to *look*.
+
+### Phase 1 — Organisations and the people in them
+
+The supply side, and the answer to cold start.
+
+- Org entity with an owner; admin view of the roster.
+- CSV / JSON import with a preview and a column-mapping step before anything is written.
+- Claim-your-profile for imported people; self-onboard for everyone else.
+- Edit, visibility, withdraw, delete — the profile belongs to the person.
+- Orgs that never import anything still work.
+
+### Phase 2 — Invitations that leave the building
+
+- Invitation records with real email delivery, and a link that works before the recipient has an
+  account.
+- Accept / decline / expire, with the seat reopening correctly in every case.
+- Chat unlocks on acceptance, not on assembly.
+- **On decline the engine re-ranks against the team as it now stands** and proposes the swap, with
+  what the team lost stated plainly.
+- Second-inviter, already-invited, already-accepted and revoked states all handled. This is where a
+  real product either holds or falls apart.
+
+### Phase 3 — Skills you can trust
+
+- Resume paste and GitHub import as a fourth action on the AI route — constrained to the 82-skill
+  vocabulary, structured output, deterministic fallback, exactly like the three before it.
+- Provenance and recency on every skill (§6.5). Endorsements.
+- The scoring engine discounts unverified levels, and the interface says so.
+- **No scraping.** GitHub's public API and a person's own export only.
+
+### Phase 3.5 — The engine phase
+
+§6 items. Recommended core: **6.1 capacity conflicts, 6.2 bus factor, 6.3 options with tradeoffs,
+6.4 infeasibility diagnosis**, plus **6.15 the benchmark** because it costs an hour. Then **6.7
+growth-aware staffing** as the signature move if there is room.
+
+### Phase 4 — Teams that stay alive
+
+- Projects persist, with membership and hours that change over time.
+- Health recomputes on every change; drift alerts — *"coverage fell to 71% because someone dropped
+  to five hours a week, here is the repair."*
+- Mid-project re-optimisation, not just initial assembly.
+- Acceptance history and outcomes feed future ranking. Arithmetic on real events, not a model —
+  results stay reproducible.
+
+### Phase 5 — Proof, finish, and the deck
+
+- The counterfactual panel: what a keyword filter picks versus what the engine picks, same brief,
+  side by side. Highest persuasion-per-hour artifact available.
+- Empty, loading, error and permission states on every flow.
+- Rate limiting on `/api/ai`; mobile passes on new screens.
+- The presentation, assembled from the phases rather than written the night before.
+
+---
+
+## 8. Deferred and declined
+
+| Item | Verdict | Reason |
+|---|---|---|
+| LinkedIn scraping / ingestion | **Declined** | Breaks LinkedIn's terms, legally exposed, and forfeits the one claim about this data nobody can attack: that it was never scraped. A person's own export, GitHub's public API, and HR-system connectors do the same job honestly. |
+| Open marketplace direction | **Declined** | See §1. Cold start, unverifiable data, no buyer. |
+| ML-based ranking | **Declined** | "The engine decides, the AI explains" is the strongest answer available under questioning. Reproducibility is worth more than a model here. |
+| Time-phased requirements (design needed up front, ops needed at the end) | **Deferred** | Genuinely better modelling and would produce smaller teams, but it is a large change to `Brief` and `coverage()`. Revisit after §6.1. |
+| Slack / calendar integrations | **Deferred** | Real signal of deployability, but integration work is a poor trade against engine work right now. Say "connector-ready", build later. |
+| Multi-org / federated pools | **Deferred** | Interesting once single-org works. Not before. |
+
+---
+
+## 9. Risks
+
+1. **A login wall in front of a first-time visitor.** Real auth and unattended evaluation pull
+   against each other. Mitigated by the guest route in Phase 0: sign-in to act, never to look.
+2. **Twelve half-features instead of four finished ones.** This is how "make it real" usually
+   fails. A product feels real because its flows are *complete* — the second person to invite the
+   same candidate, the expired link, the empty roster, the deleted profile. Four flows nobody can
+   break beat nine that fall over on the second click.
+3. **The interface outgrowing the engine further.** Already 8.6:1. Every phase should add more to
+   what the engine can *reason about* than to what the screen displays.
+4. **Demo data leaking into real results.** Isolate at the query level, not by convention.
+5. **Live-demo fragility.** The deterministic path stays the default; the database is additive.
+   Nothing that renders should require a round trip.
+
+---
+
+## 10. The quality bar
+
+Current: **95.92/100**.
+
+| Dimension | Now | What has to be true after |
+|---|---|---|
+| Code Quality | 86 | The weakest, and most at risk. `Workspace.tsx` 815, `TeamBuilder.tsx` 662. Target: data layer separated from interface, nothing over ~300 lines. |
+| Security | 98 | Currently cheap — no accounts, no data, no writes. Real auth and a real database make this genuinely hard: RLS, server-side authorisation on every read, no privileged key near the client, rate limits. Holding 98 *after* Phase 0 is worth far more than 98 today. |
+| Testing | 98 | 51 engine tests. The invitation state machine, provenance discounting, and import parsing are all pure logic and all testable. |
+| Accessibility | 96 | Hold. Auth, import, invitations and profile editing are all forms — exactly where accessibility is usually lost. |
+| Efficiency | 100 | Hold. Engine stays pure and synchronous; database work stays on the server. |
+| Problem alignment | 100 | Committing to internal team formation strengthens this. The marketplace direction was the one that risked drifting. |
+
+---
+
+## 11. Open questions
+
+- Supabase project needs to be created by the owner (account signup). URL + keys needed before
+  Phase 0 can be wired, though schema and repositories can be written without them.
+- **What happens to the seeded six companies?** The seed has 60 people spread across 6 companies,
+  and `ScopeFilter` filters by `companyId`. Under the internal-org decision, one org is one
+  company — so importing the seed as *one* demo org collapses that filter, and importing it as
+  *six* orgs breaks cross-org team building, since people are only visible inside their own org.
+  Most likely answer: one demo org, and the six become departments or offices. Needs deciding
+  before the seed migration is written. `lib/data/people.ts` carries a comment pointing here.
+- GitHub OAuth from day one, or magic link only first?
+- Does the presentation want a live demo against real data, or the deterministic demo org? Affects
+  how much Phase 4 polish matters.
+- Is there an appetite for §6.7 growth-aware staffing? It is the most distinctive item here and
+  also the least conventional.
+
+---
+
+## Reference
+
+- Live: https://projectmatch-noiryn.vercel.app
+- Repo: https://github.com/Noiryn2902/projectmatch
+- Roadmap artifact: https://claude.ai/code/artifact/4dddf163-788e-47b4-b420-a521547cf4f9
+- Build journey: `docs/ProjectMatch-Journey.docx`
+- Next.js docs for this exact version: `node_modules/next/dist/docs/` — **read these, not memory.**

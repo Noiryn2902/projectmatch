@@ -14,9 +14,32 @@ export interface Company {
   offices: string[];
 }
 
+/**
+ * An organisation is the security boundary: a roster, the projects staffed
+ * from it, and the people who administer both. `Company` is the seeded
+ * equivalent, and the seeded set becomes one org with isDemo set.
+ */
+export interface Org {
+  id: string;
+  name: string;
+  slug: string;
+  offices: string[];
+  isDemo: boolean;
+}
+
+/**
+ * Who asserted a skill level. The engine trusts these unequally on purpose —
+ * a level nobody has corroborated is a claim, not a measurement.
+ */
+export type SkillProvenance = 'self' | 'extracted' | 'endorsed' | 'verified';
+
 export interface PersonSkill {
   skillId: SkillId;
   level: number;
+  /** Absent in seeded data, which predates the field. Read as 'self'. */
+  provenance?: SkillProvenance;
+  /** ISO date. A skill last used four years ago is not a current skill. */
+  lastUsedAt?: string;
 }
 
 export interface Contact {

@@ -1,5 +1,5 @@
 import type { Skill, SkillId } from '../types';
-import skillsData from '../data/skills.json';
+import skillsData from '../seed/skills.json';
 
 export const SKILLS = skillsData as Skill[];
 

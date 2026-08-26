@@ -8,7 +8,7 @@
  *   npx tsx scripts/test-engine.ts
  */
 import type { Brief, Person } from '../lib/types';
-import peopleData from '../lib/data/people.json';
+import peopleData from '../lib/seed/people.json';
 import { fallbackBrief } from '../lib/ai/fallback';
 import { autoFill, membersOf, rankCandidates } from '../lib/engine/assemble';
 import { teamHealth } from '../lib/engine/health';

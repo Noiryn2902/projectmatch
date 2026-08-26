@@ -3,7 +3,7 @@ const { writeFileSync, mkdirSync } = fs;
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'lib', 'data');
+const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'lib', 'seed');
 mkdirSync(OUT, { recursive: true });
 
 function mulberry32(a) {
