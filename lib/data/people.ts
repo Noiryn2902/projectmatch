@@ -100,6 +100,27 @@ export async function listPeople(orgId?: string): Promise<Person[]> {
 }
 
 /**
+ * Adds one person to an org's roster. Relies on ordinary RLS — the
+ * `people_insert` policy — rather than a privileged path: an admin of the
+ * org can do this, and nobody else can, which is exactly what should be true
+ * and is worth having the database enforce rather than just this function.
+ */
+export async function addPerson(
+  orgId: string,
+  input: { name: string; title?: string; hoursPerWeek?: number },
+): Promise<void> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.from('people').insert({
+    org_id: orgId,
+    name: input.name,
+    title: input.title ?? '',
+    hours_per_week: input.hoursPerWeek ?? 0,
+  });
+
+  if (error) throw new Error('Could not add person: ' + error.message);
+}
+
+/**
  * A specific set of people, in no particular order. Built for the projects
  * repository — resolving who fills each seat — so that seam has exactly one
  * place doing the row-to-Person mapping rather than a second copy of it.

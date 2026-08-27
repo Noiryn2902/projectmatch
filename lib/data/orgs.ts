@@ -71,3 +71,54 @@ export async function listOrgsForUser(): Promise<Org[]> {
   if (error) throw new Error('Could not load organisations: ' + error.message);
   return (data as OrgRow[]).map(toOrg);
 }
+
+/** One real org by slug, or null if it does not exist or is not visible to the caller. */
+export async function getOrgBySlug(slug: string): Promise<Org | null> {
+  if (!hasDatabase) return null;
+
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from('orgs')
+    .select('id, name, slug, offices, is_demo')
+    .eq('slug', slug)
+    .eq('is_demo', false)
+    .maybeSingle();
+
+  if (error) throw new Error('Could not load the organisation: ' + error.message);
+  return data ? toOrg(data as OrgRow) : null;
+}
+
+function slugify(name: string): string {
+  const base = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return base || 'org';
+}
+
+/**
+ * Creates a real org with the signed-in user as its founding owner, via the
+ * create_org() database function — see supabase/migrations/0002_create_org.sql
+ * for why this cannot be two ordinary inserts: nobody can become the first
+ * member of an org through the normal membership policy, because that policy
+ * requires an admin to already exist.
+ */
+export async function createOrg(name: string): Promise<Org> {
+  const supabase = await createServerSupabase();
+  const slug = slugify(name);
+
+  const { data: orgId, error } = await supabase.rpc('create_org', {
+    p_name: name,
+    p_slug: slug,
+  });
+
+  if (error) {
+    if (error.message.includes('duplicate key') || error.code === '23505') {
+      throw new Error('That name is already taken. Try a different one.');
+    }
+    throw new Error('Could not create the organisation: ' + error.message);
+  }
+
+  return { id: orgId as string, name, slug, offices: [], isDemo: false };
+}

@@ -384,6 +384,34 @@ The supply side, and the answer to cold start.
 - Edit, visibility, withdraw, delete — the profile belongs to the person.
 - Orgs that never import anything still work.
 
+**Done (2026-08-27) — org creation and a minimal roster.** `/app` is the signed-in home: no
+session redirects to sign-in, no org shows a one-field "create your organisation" form, an
+existing org redirects to its roster. `/app/org/[slug]` lists the roster and can add one person
+at a time through an ordinary form — no privileged path, it relies on the same `people_insert` RLS
+policy a malicious client would also be subject to.
+
+**A real bug caught before it shipped:** `memberships_write`'s policy required the caller to
+already be an org admin, which meant nobody could ever become the *first* member of an org they
+just created — there is no admin yet to grant that membership. Fixed with `create_org()` in
+`supabase/migrations/0002_create_org.sql`, a `SECURITY DEFINER` function (same pattern as
+`is_org_member()`) that inserts the org and its founding `owner` membership atomically, bypassing
+RLS for exactly that one bootstrapping moment. Everything after — a second member, an edit — goes
+through ordinary RLS-checked writes.
+
+**Verified against the real database, both directions:** signed in as the real GitHub account,
+created `Test Co`, confirmed the `owner` membership row exists with the correct `user_id`; added
+Priya Nair to the roster and confirmed the row. Then, as a signed-out anonymous client: 0 rows
+readable from `Test Co`'s roster, and a direct insert attempt against it was blocked — the row
+count after the attempt was unchanged. RLS holds in both directions, not just the happy path.
+
+**Not done yet, on purpose — narrowly scoped to prove the pipe works end to end:**
+- CSV/JSON bulk import (still one person at a time)
+- Claim-your-profile / self-onboarding (needs an invitation or a matching mechanism — Phase 2
+  territory, or a follow-up slice)
+- Edit / withdraw / delete on a person's own profile
+- Multiple orgs per user (an owner can currently only ever have the one `/app` redirects to)
+- No nav link anywhere points at `/app` yet — reachable only by URL, same as `/project/[id]`
+
 ### Phase 2 — Invitations that leave the building
 
 - Invitation records with real email delivery, and a link that works before the recipient has an
