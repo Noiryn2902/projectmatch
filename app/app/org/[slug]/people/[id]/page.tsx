@@ -10,10 +10,17 @@ import {
   getPersonSkillDetail,
 } from '@/lib/data/people';
 import { labelOf } from '@/lib/engine/graph';
+import { AVATAR_ACCEPTED } from '@/lib/data/avatars';
 import { ACCEPTED } from '@/lib/skills/read-document';
 import type { SkillProvenance } from '@/lib/types';
 
-import { addResumeSkillsAction, claimAction, endorseAction } from './actions';
+import {
+  addResumeSkillsAction,
+  claimAction,
+  endorseAction,
+  importGitHubAction,
+  setAvatarAction,
+} from './actions';
 
 const PROVENANCE: Record<SkillProvenance, { label: string; className: string }> = {
   verified: { label: 'verified', className: 'border-good/40 text-good' },
@@ -41,6 +48,7 @@ export default async function PersonPage({
     claim_error?: string;
     need_profile?: string;
     file_error?: string;
+    photo?: string;
     welcome?: string;
     read?: string;
     by?: string;
@@ -82,6 +90,28 @@ export default async function PersonPage({
               )}
             </h1>
             <p className="text-[13px] text-muted">{person.title || 'No title yet'}</p>
+            {(isMe || canEdit) && (
+              <form
+                action={setAvatarAction}
+                className="mt-1.5 flex items-center gap-2 text-[11px]"
+              >
+                <input type="hidden" name="slug" value={slug} />
+                <input type="hidden" name="personId" value={person.id} />
+                <input
+                  type="file"
+                  name="photo"
+                  accept={AVATAR_ACCEPTED}
+                  aria-label="Profile photo"
+                  className="w-40 text-[11px] text-muted file:mr-2 file:rounded-full file:border-0 file:bg-panel-2 file:px-2 file:py-1 file:text-[11px] file:text-ink hover:file:bg-line"
+                />
+                <button
+                  type="submit"
+                  className="rounded-full border border-line px-2 py-0.5 text-muted transition-colors hover:border-line-strong hover:text-ink"
+                >
+                  {person.photo ? 'Replace' : 'Upload'}
+                </button>
+              </form>
+            )}
           </div>
         </div>
 
@@ -122,12 +152,15 @@ export default async function PersonPage({
         {sp.added !== undefined && (
           <Banner tone="good">
             {Number(sp.added) === 0
-              ? 'Nothing new — every skill the résumé evidenced was already on file.'
-              : `${sp.by === 'ai' ? 'Gemini read' : 'Matched'} ${sp.added} new skill${
-                  Number(sp.added) === 1 ? '' : 's'
-                } out of the résumé.`}
+              ? 'Nothing new — every skill found was already on file.'
+              : `${
+                  sp.by === 'github' ? 'Read' : sp.by === 'ai' ? 'Gemini read' : 'Matched'
+                } ${sp.added} new skill${Number(sp.added) === 1 ? '' : 's'} ${
+                  sp.by === 'github' ? 'off GitHub.' : 'out of the résumé.'
+                }`}
           </Banner>
         )}
+        {sp.photo && <Banner tone="good">Photo updated.</Banner>}
         {sp.denied && <Banner tone="warn">Editing the roster is limited to organisation admins.</Banner>}
         {sp.file_error && <Banner tone="warn">{sp.file_error}</Banner>}
 
@@ -207,8 +240,37 @@ export default async function PersonPage({
           </p>
         )}
 
+        {(canEdit || isMe) && (
+          <section className="mt-6 rounded-xl border border-line bg-panel p-4">
+            <h2 className="text-[13px] font-medium">Add skills from GitHub</h2>
+            <p className="mt-1 text-[12px] text-muted">
+              Public repositories only — languages and topics, weighted by how much is written in
+              each. Nothing private, no extra permissions.
+            </p>
+            <form action={importGitHubAction} className="mt-3 flex gap-2">
+              <input type="hidden" name="orgId" value={org.id} />
+              <input type="hidden" name="slug" value={slug} />
+              <input type="hidden" name="personId" value={person.id} />
+              <input
+                name="handle"
+                required
+                placeholder="username"
+                aria-label="GitHub username"
+                defaultValue={person.contact.github ?? ''}
+                className="min-w-0 flex-1 rounded-full border border-line bg-canvas px-4 py-2 text-[13px] outline-none transition-colors focus:border-accent"
+              />
+              <button
+                type="submit"
+                className="shrink-0 rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-panel transition-opacity hover:opacity-90"
+              >
+                Read
+              </button>
+            </form>
+          </section>
+        )}
+
         {canEdit && (
-          <section className="mt-8 rounded-xl border border-line bg-panel p-4">
+          <section className="mt-4 rounded-xl border border-line bg-panel p-4">
             <h2 className="text-[13px] font-medium">Add skills from a résumé</h2>
             <p className="mt-1 text-[12px] text-muted">
               Upload a PDF or Word file, or paste the text. Recognised skills are added as{' '}

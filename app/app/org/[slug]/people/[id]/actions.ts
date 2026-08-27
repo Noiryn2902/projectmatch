@@ -11,7 +11,9 @@ import {
   getMyPersonId,
   removeEndorsement,
 } from '@/lib/data/people';
+import { AvatarError, setAvatar } from '@/lib/data/avatars';
 import { extractSkillsSmart } from '@/lib/skills/ai-extract';
+import { GitHubError, skillsFromGitHub } from '@/lib/skills/github';
 import { DocumentError, readDocument } from '@/lib/skills/read-document';
 
 const REVALIDATE = '/app/org/[slug]/people/[id]';
@@ -93,4 +95,61 @@ export async function endorseAction(formData: FormData) {
 
   revalidatePath(REVALIDATE, 'page');
   redirect(`/app/org/${slug}/people/${personId}`);
+}
+
+/** Replaces a profile photo. Ownership is checked in setAvatar, under RLS. */
+export async function setAvatarAction(formData: FormData) {
+  const slug = String(formData.get('slug') ?? '');
+  const personId = String(formData.get('personId') ?? '');
+  const file = formData.get('photo');
+  if (!slug || !personId || !(file instanceof File) || file.size === 0) return;
+
+  let error: string | null = null;
+  try {
+    await setAvatar(personId, file);
+  } catch (err) {
+    error = err instanceof AvatarError ? err.message : 'Could not update the photo.';
+  }
+
+  revalidatePath(REVALIDATE, 'page');
+  redirect(
+    error
+      ? `/app/org/${slug}/people/${personId}?file_error=${encodeURIComponent(error)}`
+      : `/app/org/${slug}/people/${personId}?photo=1`,
+  );
+}
+
+/**
+ * Pulls skills off a public GitHub profile. The username is typed in by the
+ * person, the API is public, and nothing needs an extra OAuth scope — see
+ * lib/skills/github.ts for why this import is sanctioned where scraping is
+ * not.
+ */
+export async function importGitHubAction(formData: FormData) {
+  const orgId = String(formData.get('orgId') ?? '');
+  const slug = String(formData.get('slug') ?? '');
+  const personId = String(formData.get('personId') ?? '');
+  const handle = String(formData.get('handle') ?? '').trim();
+  if (!orgId || !slug || !personId || !handle) return;
+
+  const role = await getMyRole(orgId);
+  const mine = await getMyPersonId(orgId);
+  const allowed = role === 'owner' || role === 'admin' || mine === personId;
+  if (!allowed) redirect(`/app/org/${slug}/people/${personId}?denied=1`);
+
+  let added = 0;
+  let error: string | null = null;
+  try {
+    const result = await skillsFromGitHub(handle);
+    added = await addExtractedSkills(personId, result.skills, 'github');
+  } catch (err) {
+    error = err instanceof GitHubError ? err.message : 'Could not read that GitHub profile.';
+  }
+
+  revalidatePath(REVALIDATE, 'page');
+  redirect(
+    error
+      ? `/app/org/${slug}/people/${personId}?file_error=${encodeURIComponent(error)}`
+      : `/app/org/${slug}/people/${personId}?added=${added}&by=github`,
+  );
 }

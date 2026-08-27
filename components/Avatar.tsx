@@ -22,7 +22,13 @@ export default function Avatar({
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);
-  const src = person.photo ? `/media/people/${person.photo}` : null;
+  // Seeded portraits are a bare filename; an uploaded one is a full URL. The
+  // scheme tells them apart, so both work side by side without a migration.
+  const src = person.photo
+    ? person.photo.startsWith('http')
+      ? person.photo
+      : `/media/people/${person.photo}`
+    : null;
 
   if (src && !failed) {
     return (

@@ -120,10 +120,18 @@ export default async function AppHome() {
                       <span className="shrink-0 text-[11px] text-faint uppercase">{t.status}</span>
                     </span>
                     <span className="mt-0.5 block truncate text-[12px] text-muted">{t.brief}</span>
-                    <span className="mt-1.5 block text-[11px] text-faint">
-                      You are {t.roleTitle} &middot; {t.hoursNeeded} hrs/wk
-                      {t.teammates > 0 &&
-                        ` · with ${t.teammates} other${t.teammates === 1 ? '' : 's'}`}
+                    <span className="mt-1.5 flex items-center gap-2 text-[11px] text-faint">
+                      <span>
+                        You are {t.roleTitle} &middot; {t.hoursNeeded} hrs/wk
+                        {t.teammates > 0 &&
+                          ` · with ${t.teammates} other${t.teammates === 1 ? '' : 's'}`}
+                      </span>
+                      <span className="ml-auto flex shrink-0 items-center gap-1 text-accent">
+                        <svg viewBox="0 0 16 16" className="size-3.5 fill-current" aria-hidden="true">
+                          <path d="M8 2c-3.3 0-6 2.2-6 4.9 0 1.5.8 2.9 2.1 3.8-.1.6-.4 1.4-1 2.1 1.3-.2 2.4-.7 3.1-1.2.6.1 1.2.2 1.8.2 3.3 0 6-2.2 6-4.9S11.3 2 8 2Z" />
+                        </svg>
+                        Open chat
+                      </span>
                     </span>
                   </Link>
                 </li>

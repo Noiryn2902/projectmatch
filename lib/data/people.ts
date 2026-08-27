@@ -247,6 +247,7 @@ export async function getPeopleByIds(ids: string[]): Promise<Person[]> {
 export async function addExtractedSkills(
   personId: string,
   skills: { skillId: string; level: number }[],
+  source: 'résumé' | 'github' = 'résumé',
 ): Promise<number> {
   if (skills.length === 0) return 0;
 
@@ -268,7 +269,7 @@ export async function addExtractedSkills(
       skill_id: s.skillId,
       level: s.level,
       provenance: 'extracted' as const,
-      source: 'résumé',
+      source,
     })),
   );
 
