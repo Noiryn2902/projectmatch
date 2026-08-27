@@ -251,6 +251,12 @@ export default async function ProjectPage({
                       : ''}
                 </p>
               )}
+              {health.stretch > 0 && (
+                <p className="mt-1 text-[11px] text-accent">
+                  {health.stretch} stretch {health.stretch === 1 ? 'assignment' : 'assignments'} —
+                  paired with a senior in a skill they&rsquo;re still building
+                </p>
+              )}
             </section>
 
             <section className="rounded-xl border border-line border-l-2 border-l-accent bg-panel px-4 py-3.5">

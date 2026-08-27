@@ -12,6 +12,7 @@ import peopleData from '../lib/seed/people.json';
 import { fallbackBrief } from '../lib/ai/fallback';
 import { autoFill, membersOf, rankCandidates } from '../lib/engine/assemble';
 import { diagnoseRole } from '../lib/engine/feasibility';
+import { stretchCount, stretchPairs } from '../lib/engine/growth';
 import { teamHealth } from '../lib/engine/health';
 import { proposeTeams } from '../lib/engine/options';
 import {
@@ -386,6 +387,32 @@ check(
     return d.staffable && d.unmet.length === 0;
   })(),
 );
+
+// ------------------------------------------------------- growth-aware staffing
+
+group('Growth: staffing is also how people develop');
+
+const junior: Person = { ...pool[0], id: 'jr', name: 'Jun', seniority: 1, skills: [
+  { skillId: 'react', level: 1 },
+  { skillId: 'python', level: 1 },
+] };
+const senior: Person = { ...pool[1], id: 'sr', name: 'Sen', seniority: 4, skills: [
+  { skillId: 'react', level: 5 },
+  { skillId: 'python', level: 5 },
+] };
+const peer: Person = { ...pool[2], id: 'pr', name: 'Pea', seniority: 1, skills: [{ skillId: 'react', level: 5 }] };
+const shallowSenior: Person = { ...senior, id: 'ss', name: 'Sha', skills: [{ skillId: 'react', level: 2 }] };
+
+check('a junior beside a strong senior in the same skill is a stretch pairing', (() => {
+  const p = stretchPairs([junior, senior]);
+  return p.some((x) => x.learnerId === 'jr' && x.mentorId === 'sr' && x.skillId === 'react');
+})());
+check('one learner, one count, even across several skills', stretchCount([junior, senior]) === 1);
+check('two skills to grow in produce two pairings', stretchPairs([junior, senior]).length === 2);
+check('a same-level peer is not a mentor', stretchPairs([junior, peer]).length === 0);
+check('a senior who is only slightly ahead is not a mentor', stretchPairs([junior, shallowSenior]).length === 0);
+check('two seniors and no junior means nothing to develop', stretchCount([senior, { ...senior, id: 's2' }]) === 0);
+check('team health reports the stretch count', teamHealth(bfBrief, [junior, senior], 1).stretch === 1);
 
 // ------------------------------------------------------------ team options
 

@@ -58,7 +58,10 @@ export default async function StaffOptionsPage({
                   </span>
                 </div>
                 <p className="mt-0.5 text-[11px] text-faint">
-                  bus factor {opt.busFactor} &middot; {opt.spareHours} spare hrs/wk per person
+                  bus factor {opt.busFactor} &middot; {opt.spareHours} spare hrs/wk
+                  {opt.stretch > 0 && (
+                    <> &middot; <span className="text-accent">{opt.stretch} learning on the job</span></>
+                  )}
                 </p>
                 {opt.tradeoff && (
                   <p className="mt-2 text-[12px] text-muted">

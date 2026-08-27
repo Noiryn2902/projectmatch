@@ -1,5 +1,6 @@
 import type { Brief, Person, ScopeFilter, TeamState } from '../types';
 import { autoFill, defaultObjective, improve, membersOf } from './assemble';
+import { stretchCount } from './growth';
 import { teamHealth } from './health';
 import { allRequirements, coverage, coveringCount } from './score';
 
@@ -23,6 +24,8 @@ export interface TeamOption {
   busFactor: number;
   /** Average spare hours per week across seated members, for their seat. */
   spareHours: number;
+  /** People on the team with somewhere to grow. */
+  stretch: number;
 }
 
 const COVERED = 0.5;
@@ -40,7 +43,12 @@ function stats(team: TeamState, brief: Brief, pool: Person[]) {
     spare += Math.max(0, p.hoursPerWeek - r.hoursNeeded);
     seated++;
   }
-  return { cov, busFactor, spareHours: seated ? Math.round(spare / seated) : 0 };
+  return {
+    cov,
+    busFactor,
+    spareHours: seated ? Math.round(spare / seated) : 0,
+    stretch: stretchCount(members),
+  };
 }
 
 /** min covering count across the weighted requirements a team covers, capped at 2, normalised. */
@@ -51,6 +59,11 @@ function busNorm(team: TeamState, brief: Brief, pool: Person[]): number {
   if (covered.length === 0) return 0;
   const bf = Math.min(...covered.map((r) => coveringCount(m, r, COVERED)));
   return Math.min(bf, 2) / 2;
+}
+
+function growthNorm(team: TeamState, brief: Brief, pool: Person[]): number {
+  const n = brief.roles.length || 1;
+  return Math.min(1, stretchCount(membersOf(team, pool)) / n);
 }
 
 function spareNorm(team: TeamState, brief: Brief, pool: Person[]): number {
@@ -89,6 +102,10 @@ function tradeoffVs(
   if (dSpare >= 3) parts.push(`${dSpare} more spare hrs/wk per person`);
   else if (dSpare <= -3) parts.push(`${-dSpare} fewer spare hrs/wk per person`);
 
+  const dStretch = opt.stretch - base.stretch;
+  if (dStretch >= 1) parts.push(`${dStretch} more ${dStretch === 1 ? 'person' : 'people'} learning on the job`);
+  else if (dStretch <= -1) parts.push(`${-dStretch} fewer growing into the work`);
+
   return parts.join(', ');
 }
 
@@ -105,6 +122,7 @@ export function proposeTeams(brief: Brief, pool: Person[], scope: ScopeFilter): 
       coverage: baseStats.cov,
       busFactor: baseStats.busFactor,
       spareHours: baseStats.spareHours,
+      stretch: baseStats.stretch,
     },
   ];
 
@@ -122,6 +140,11 @@ export function proposeTeams(brief: Brief, pool: Person[], scope: ScopeFilter): 
       label: 'Lightest load',
       obj: (t) => 0.78 * defObj(t) + 0.22 * spareNorm(t, brief, pool),
     },
+    {
+      key: 'growth',
+      label: 'Develops people',
+      obj: (t) => 0.78 * defObj(t) + 0.22 * growthNorm(t, brief, pool),
+    },
   ];
 
   for (const v of variants) {
@@ -138,6 +161,7 @@ export function proposeTeams(brief: Brief, pool: Person[], scope: ScopeFilter): 
       coverage: st.cov,
       busFactor: st.busFactor,
       spareHours: st.spareHours,
+      stretch: st.stretch,
     });
   }
 

@@ -126,6 +126,12 @@ export interface TeamHealth {
    * single point of failure; 0 means nothing weighted is covered yet.
    */
   busFactor: number;
+  /**
+   * How many people on the team have somewhere to grow — a skill they are
+   * still building where a more senior teammate is strong. A signal to
+   * optimise *for*, not a gap.
+   */
+  stretch: number;
   gaps: Gap[];
 }
 

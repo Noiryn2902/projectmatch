@@ -1,5 +1,6 @@
 import type { Brief, Gap, Person, TeamHealth } from '../types';
 import { labelOf } from './graph';
+import { stretchCount } from './growth';
 import { allRequirements, coverage, coveringCount, satisfaction, teamOverlapHours } from './score';
 
 const COVERED = 0.5;
@@ -89,6 +90,7 @@ export function teamHealth(brief: Brief, members: Person[], seats: number): Team
     seats,
     overlapHours,
     busFactor,
+    stretch: stretchCount(members),
     gaps: gaps.slice(0, 5),
   };
 }

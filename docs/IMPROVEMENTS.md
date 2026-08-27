@@ -347,15 +347,25 @@ Every real allocation problem is budgeted. `seniority × hours` gives cost almos
 engine answers the question managers actually ask: *"Team B costs 1.4× for six points of coverage —
 worth it?"* Without cost this is a recommender. With cost it is an optimiser.
 
-### 6.7 Growth-aware staffing **[Proposed — the signature move]**
+### 6.7 Growth-aware staffing **[Done — 2026-08-27]**
 
-Staffing is also how people develop, and nobody models it. A junior seated beside a senior in the
-same skill is a stretch assignment. `health.ts` already flags "no senior presence" — the inverse is
-an opportunity signal.
+`stretchPairs(members)` in `lib/engine/growth.ts` finds every (learner, mentor, skill) pairing on a
+team: a member with a skill at level ≤ 2 where another member, at least one seniority band up, is
+at least two levels ahead in the same or a near-identical skill. `stretchCount()` is how many
+distinct people have at least one place to grow.
 
-Optimising for team output **plus individual development** rather than output alone is humane, is a
-genuine priority for the people who would buy this, and is almost certainly unique in this field.
-This is the one people remember afterwards.
+Wired everywhere output-only metrics were:
+
+- `TeamHealth.stretch` — shown on the project health card, in accent colour, as a *positive*:
+  *"2 stretch assignments — paired with a senior in a skill they're still building"*.
+- The staffing candidate rows carry a **growth** tag when seating that person here would put them
+  next to a current member strong in a skill they are still learning.
+- `proposeTeams` gained a fourth variant, **Develops people**, whose objective adds a stretch term,
+  and every option now reports its stretch count; the tradeoff sentences pick it up
+  (*"…, 2 more people learning on the job"*).
+
+Pure engine, no migration. 7 new assertions (engine suite 91). This is the item §6 calls the one
+people remember — a team that covers the brief *and* grows its people beats one that only covers it.
 
 ### 6.8 Fairness: opportunity concentration **[Proposed]**
 

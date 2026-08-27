@@ -10,6 +10,7 @@ import { listPeople } from '@/lib/data/people';
 import { SEAT_FLOOR, rankCandidates, type Candidate } from '@/lib/engine/assemble';
 import { diagnoseRole } from '@/lib/engine/feasibility';
 import { labelOf } from '@/lib/engine/graph';
+import { stretchPairs } from '@/lib/engine/growth';
 import { coveringProvenance } from '@/lib/engine/score';
 
 import { fillSeatAction, inviteAction } from './actions';
@@ -63,6 +64,19 @@ export default async function StaffSeatPage({
     search: '',
     minHours: 0,
   });
+
+  // Candidates who would be a stretch assignment here: junior in a skill
+  // this project's current members are strong in — someone to learn from.
+  const growsHere = new Set(
+    project.members.length > 0
+      ? stretchPairs(project.members).map((p) => p.learnerId)
+      : [],
+  );
+  const wouldGrow = (person: (typeof pool)[number]) =>
+    project.members.length > 0 &&
+    stretchPairs([person, ...project.members]).some(
+      (p) => p.learnerId === person.id && !growsHere.has(person.id),
+    );
 
   // If this seat is open because someone declined it, that person still
   // appears in the ranking — a small roster can't afford to hide anyone — but
@@ -180,6 +194,7 @@ export default async function StaffSeatPage({
                   isSeated={c.person.id === seatedId}
                   hasDeclined={declinedIds.has(c.person.id)}
                   trust={coveringProvenance(c.person, role.requirements)}
+                  growth={wouldGrow(c.person)}
                   committed={commitments.get(c.person.id)}
                   roleHours={role.hoursNeeded}
                   projectId={project.id}
@@ -207,6 +222,7 @@ export default async function StaffSeatPage({
                     isSeated={c.person.id === seatedId}
                     hasDeclined={declinedIds.has(c.person.id)}
                     trust={coveringProvenance(c.person, role.requirements)}
+                  growth={wouldGrow(c.person)}
                     committed={commitments.get(c.person.id)}
                     roleHours={role.hoursNeeded}
                     projectId={project.id}
@@ -285,6 +301,7 @@ function CandidateRow({
   trust,
   committed,
   roleHours,
+  growth,
   projectId,
   roleId,
   readOnly,
@@ -295,6 +312,7 @@ function CandidateRow({
   trust: Trust;
   committed?: { hours: number; projects: number };
   roleHours: number;
+  growth: boolean;
   projectId: string;
   roleId: string;
   readOnly: boolean;
@@ -315,6 +333,11 @@ function CandidateRow({
           {tag && (
             <span className={`rounded-full border px-1.5 py-0 text-[10px] font-normal ${tag.className}`}>
               {tag.label}
+            </span>
+          )}
+          {growth && (
+            <span className="rounded-full border border-accent/40 px-1.5 py-0 text-[10px] font-normal text-accent">
+              growth
             </span>
           )}
           {verdict !== 'clear' && (
