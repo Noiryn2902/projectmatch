@@ -46,10 +46,29 @@ export async function lockTeamAction(formData: FormData) {
   const org = orgs[0];
   if (!org) redirect('/app');
 
-  // The same deterministic parser the builder itself used, so the roles on
-  // the real project are the roles they were just looking at.
-  const brief: Brief = { text, ...fallbackBrief(text) };
-  const projectId = await createProject(org.id, brief, text.slice(0, 60));
+  // The roles the builder was actually showing, carried across verbatim.
+  // Re-deriving them here was a real bug: the demo may have had Gemini read
+  // the brief, and re-running the deterministic parser silently replaced
+  // those roles with different ones, so the project you landed on was not
+  // the project you had just been looking at.
+  let roles: Brief['roles'] | null = null;
+  try {
+    const raw = String(formData.get('roles') ?? '');
+    if (raw) roles = JSON.parse(raw) as Brief['roles'];
+  } catch {
+    // Malformed — fall through to parsing the text, which always works.
+  }
+
+  const parsed = fallbackBrief(text);
+  const brief: Brief = {
+    text,
+    ...parsed,
+    ...(roles && roles.length > 0 ? { roles } : {}),
+  };
+
+  // A name, so it does not arrive as yet another "Untitled project".
+  const name = text.length > 60 ? text.slice(0, 57).trimEnd() + '…' : text;
+  const projectId = await createProject(org.id, brief, name);
 
   redirect(`/project/${projectId}?created=1`);
 }

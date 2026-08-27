@@ -635,6 +635,9 @@ export default function TeamBuilder({
           */}
           <form action={lockTeamAction} className="ml-auto">
             <input type="hidden" name="brief" value={brief.text} />
+            {/* The roles on screen, so the project you land on is the one you
+                were just looking at rather than a re-parse of the text. */}
+            <input type="hidden" name="roles" value={JSON.stringify(brief.roles)} />
             <button
               type="submit"
               disabled={health.filled === 0}

@@ -9,6 +9,8 @@ import { getDemoOrg } from '@/lib/data/orgs';
 import { listInvitationTiles } from '@/lib/data/invitations';
 import { chatIsOpen, listMessages } from '@/lib/data/messages';
 import { getProject } from '@/lib/data/projects';
+import { listPeople } from '@/lib/data/people';
+import { SEAT_FLOOR, rankCandidates } from '@/lib/engine/assemble';
 import { labelOf } from '@/lib/engine/graph';
 import type { Person } from '@/lib/types';
 
@@ -18,6 +20,7 @@ import {
   renameProjectAction,
   revokeInvitationAction,
 } from './actions';
+import { inviteAction } from './staff/[roleId]/actions';
 
 /**
  * The first real, URL-addressable project page.
@@ -80,6 +83,36 @@ export default async function ProjectPage({
   const invitations = readOnly ? [] : await listInvitationTiles(project.id);
   const chatOpen = chatIsOpen(project.members);
   const messages = chatOpen ? await listMessages(project.id) : [];
+
+  // For every seat still open, who the engine would put there from THIS
+  // org's roster. The landing-page demo picks fictional people who do not
+  // exist in your database, so they cannot come across with the brief —
+  // this is the honest equivalent: the same scoring, run against your own
+  // people, proposed rather than assigned.
+  const suggestions = new Map<string, { person: Person; fit: number }>();
+  if (!readOnly) {
+    const pool = await listPeople(project.orgId);
+    const taken = new Set(
+      Object.values(project.seats)
+        .map((s) => s.person?.id)
+        .filter(Boolean) as string[],
+    );
+    for (const role of project.roles) {
+      if (project.seats[role.id]?.state !== 'open') continue;
+      const ranked = rankCandidates(
+        pool.filter((p) => !taken.has(p.id)),
+        role,
+        project.brief,
+        project.team,
+        { sort: 'bestFit', scope: { companyId: null, office: null }, search: '', minHours: 0 },
+      );
+      const best = ranked.find((c) => c.roleMatch >= SEAT_FLOOR);
+      if (best) {
+        suggestions.set(role.id, { person: best.person, fit: best.roleMatch });
+        taken.add(best.person.id);
+      }
+    }
+  }
 
   const { brief, roles, health, seats, declines } = project;
   const pct = Math.round(health.coverage * 100);
@@ -287,6 +320,34 @@ export default async function ProjectPage({
                                 ? `${declined.personName} declined — seat reopened`
                                 : 'Open seat'}
                         </p>
+
+                        {/* The engine's pick from your own roster, offered
+                            rather than assigned — one click sends the ask. */}
+                        {!person && suggestions.has(role.id) && (
+                          <form action={inviteAction} className="mt-1.5 flex items-center gap-2">
+                            <input type="hidden" name="projectId" value={project.id} />
+                            <input type="hidden" name="roleId" value={role.id} />
+                            <input
+                              type="hidden"
+                              name="personId"
+                              value={suggestions.get(role.id)!.person.id}
+                            />
+                            <Avatar person={suggestions.get(role.id)!.person} size={18} />
+                            <span className="min-w-0 truncate text-[12px] text-muted">
+                              {suggestions.get(role.id)!.person.name}
+                              <span className="text-faint">
+                                {' '}
+                                &middot; {Math.round(suggestions.get(role.id)!.fit * 100)}% fit
+                              </span>
+                            </span>
+                            <button
+                              type="submit"
+                              className="shrink-0 rounded-lg bg-accent px-2.5 py-1 text-[11px] font-medium text-panel transition-opacity hover:opacity-90"
+                            >
+                              Invite
+                            </button>
+                          </form>
+                        )}
                       </div>
                       <span className="shrink-0 text-[11px] text-faint">
                         {role.hoursNeeded} hrs/wk
