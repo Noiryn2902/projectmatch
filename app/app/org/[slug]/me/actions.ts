@@ -4,17 +4,18 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 
 import { addExtractedSkills, createMyProfile, getMyPersonId } from '@/lib/data/people';
-import { extractSkills } from '@/lib/skills/extract';
+import { extractSkillsSmart } from '@/lib/skills/ai-extract';
 
 /**
  * Onboarding in one submit: create the caller's own person row, then read
- * whatever skills their pasted résumé mentions into it.
+ * whatever skills their pasted résumé evidences into it.
  *
- * The résumé is parsed here, on the server, from the raw text — the same
- * deterministic extractor the admin-side résumé box uses, so this needs no
- * API key and behaves identically with the network unplugged. Skills land as
- * `extracted`, which the engine already trusts below an endorsed or verified
- * level, and the page says so.
+ * The résumé is read here, on the server, from the raw text. Gemini does the
+ * reading when a key is configured — constrained to the 82-skill vocabulary
+ * and re-checked against it on the way back — and the deterministic matcher
+ * catches it when the model is unavailable, so this works with the network
+ * unplugged. Either way the skills land as `extracted`, which the engine
+ * trusts below an endorsed or verified level, and the page says so.
  */
 export async function createMyProfileAction(formData: FormData) {
   const orgId = String(formData.get('orgId') ?? '');
@@ -34,10 +35,14 @@ export async function createMyProfileAction(formData: FormData) {
 
   const personId = await createMyProfile(orgId, { name, title, office, hoursPerWeek });
 
+  let added = 0;
+  let source: 'ai' | 'fallback' = 'fallback';
   if (resume.trim()) {
-    await addExtractedSkills(personId, extractSkills(resume));
+    const read = await extractSkillsSmart(resume);
+    source = read.source;
+    added = await addExtractedSkills(personId, read.skills);
   }
 
   revalidatePath('/app/org/[slug]', 'page');
-  redirect(`/app/org/${slug}/people/${personId}?welcome=1`);
+  redirect(`/app/org/${slug}/people/${personId}?welcome=1&read=${added}&by=${source}`);
 }

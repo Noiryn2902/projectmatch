@@ -40,6 +40,8 @@ export default async function PersonPage({
     claim_error?: string;
     need_profile?: string;
     welcome?: string;
+    read?: string;
+    by?: string;
   }>;
 }) {
   const { slug, id } = await params;
@@ -101,10 +103,17 @@ export default async function PersonPage({
 
         {sp.welcome && (
           <Banner tone="good">
-            <span className="font-medium">You are on the roster.</span> Your skills below came from
-            what you pasted, so they are marked <span className="text-faint">from résumé</span> — a
-            colleague endorsing one tells the engine to weight it higher. From here you can be
-            matched to projects, and every seat reaches you as an invitation you can decline.
+            <span className="font-medium">You are on the roster.</span>{' '}
+            {Number(sp.read ?? 0) > 0 && (
+              <>
+                {sp.by === 'ai' ? 'Gemini read' : 'We matched'} {sp.read} skill
+                {Number(sp.read) === 1 ? '' : 's'} out of your résumé
+                {sp.by === 'ai' ? '' : ' (the AI was unavailable, so this was the direct match)'}.{' '}
+              </>
+            )}
+            They are marked <span className="text-faint">from résumé</span> — a colleague endorsing
+            one tells the engine to weight it higher. From here you can be matched to projects, and
+            every seat reaches you as an invitation you can decline.
           </Banner>
         )}
         {sp.claimed && (
@@ -119,8 +128,10 @@ export default async function PersonPage({
         {sp.added !== undefined && (
           <Banner tone="good">
             {Number(sp.added) === 0
-              ? 'Nothing new — every skill the résumé mentioned was already on file.'
-              : `Added ${sp.added} skill${Number(sp.added) === 1 ? '' : 's'} from the résumé.`}
+              ? 'Nothing new — every skill the résumé evidenced was already on file.'
+              : `${sp.by === 'ai' ? 'Gemini read' : 'Matched'} ${sp.added} new skill${
+                  Number(sp.added) === 1 ? '' : 's'
+                } out of the résumé.`}
           </Banner>
         )}
         {sp.denied && <Banner tone="warn">Editing the roster is limited to organisation admins.</Banner>}

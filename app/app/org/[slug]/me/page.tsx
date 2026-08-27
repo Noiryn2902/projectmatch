@@ -130,8 +130,9 @@ export default async function MyProfilePage({ params }: { params: Promise<{ slug
               Your skills, the fast way
             </label>
             <p className="mt-1 text-[12px] text-muted">
-              Paste your résumé or LinkedIn summary and we read the skills out of it, instead of
-              asking you to tick eighty boxes. Only skills in our vocabulary are kept — nothing is
+              Paste your résumé or LinkedIn summary and Gemini reads the skills out of it, instead
+              of asking you to tick eighty boxes. It can only answer with skills from our
+              82-skill vocabulary and every answer is checked against it again — nothing is
               invented, and nothing is scraped from anywhere.
             </p>
             <textarea

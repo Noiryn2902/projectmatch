@@ -11,7 +11,7 @@ import {
   getMyPersonId,
   removeEndorsement,
 } from '@/lib/data/people';
-import { extractSkills } from '@/lib/skills/extract';
+import { extractSkillsSmart } from '@/lib/skills/ai-extract';
 
 const REVALIDATE = '/app/org/[slug]/people/[id]';
 
@@ -33,10 +33,11 @@ export async function addResumeSkillsAction(formData: FormData) {
     redirect(`/app/org/${slug}/people/${personId}?denied=1`);
   }
 
-  const added = await addExtractedSkills(personId, extractSkills(resume));
+  const read = await extractSkillsSmart(resume);
+  const added = await addExtractedSkills(personId, read.skills);
 
   revalidatePath(REVALIDATE, 'page');
-  redirect(`/app/org/${slug}/people/${personId}?added=${added}`);
+  redirect(`/app/org/${slug}/people/${personId}?added=${added}&by=${read.source}`);
 }
 
 /** "That row is me." Enforced by claim_person() — see migration 0005. */
