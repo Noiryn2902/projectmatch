@@ -99,6 +99,30 @@ export async function listPeople(orgId?: string): Promise<Person[]> {
   return (data as unknown as PersonRow[]).map(toPerson);
 }
 
+/**
+ * A specific set of people, in no particular order. Built for the projects
+ * repository — resolving who fills each seat — so that seam has exactly one
+ * place doing the row-to-Person mapping rather than a second copy of it.
+ */
+export async function getPeopleByIds(ids: string[]): Promise<Person[]> {
+  if (ids.length === 0) return [];
+
+  if (!hasDatabase) {
+    const byId = new Map((peopleSeed as Person[]).map((p) => [p.id, p]));
+    return ids.map((id) => byId.get(id)).filter((p): p is Person => Boolean(p));
+  }
+
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from('people')
+    .select(SELECT)
+    .in('id', ids)
+    .is('deleted_at', null);
+
+  if (error) throw new Error('Could not load people: ' + error.message);
+  return (data as unknown as PersonRow[]).map(toPerson);
+}
+
 /** One person, or null if they do not exist or are not visible to the caller. */
 export async function getPerson(id: string): Promise<Person | null> {
   if (!hasDatabase) {

@@ -90,6 +90,16 @@ product is aimed at the organisation.
    **This blocks Phase 2 outright.** An invitation email links to a URL. There are no URLs. Real
    routes are a prerequisite for invitations, shareable team proposals, and org pages — not polish.
 
+   **Partially resolved (2026-08-27):** `/project/[id]` is real now — `lib/data/projects.ts` reads
+   a persisted project (brief, roles, requirements, seats, filled members) and runs it through the
+   unmodified engine, and the route renders it server-side. Verified against Postgres: real seeded
+   names, a real 52% coverage number, and a genuinely honest gap (a filled seat whose occupant
+   turned out not to actually have the required skill — the engine caught it, which is the whole
+   point). Not yet done: the **write** path. Submitting a brief still only updates in-memory
+   state — turning that into a real `create_project` call needs a real org to write into, which is
+   Phase 1 (org membership), not built yet. `TeamBuilder.tsx`/`Workspace.tsx` also still exist
+   unmodified — the split into route-based pages is still pending, tracked in §3.
+
 2. **The interface has outgrown the engine, 8.6 to 1.** 3,802 lines of components against 443
    lines of engine. Two files carry most of it: `Workspace.tsx` (815) and `TeamBuilder.tsx` (662).
    This is the direct cause of Code Quality being the lowest score at 86, and every new flow makes

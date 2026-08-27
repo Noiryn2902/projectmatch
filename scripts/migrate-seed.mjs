@@ -224,6 +224,111 @@ async function main() {
       Object.entries(spread).map(([k, v]) => k + ' ' + v).join(', ') + ')',
   );
 
+  // One example project, seeded directly like the people above rather than
+  // created through the app — Phase 1 (org membership) does not exist yet, so
+  // there is no real path to write a project into an org. This gives
+  // /project/[id] something genuine to be tested against in the meantime, and
+  // gives everyone else a linkable example to look at. One seat is left open
+  // on purpose: a perfectly staffed demo team proves nothing about the health
+  // computation that an honest gap does not.
+  const EXAMPLE_ROLES = [
+    {
+      title: 'Data engineer',
+      hoursNeeded: 8,
+      requirements: [
+        ['sql', 3, 3],
+        ['etl', 3, 2],
+        ['data-modeling', 3, 2],
+      ],
+      fillTitle: /data (engineer|analyst)/i,
+    },
+    {
+      title: 'Backend engineer',
+      hoursNeeded: 10,
+      requirements: [
+        ['api-design', 3, 3],
+        ['nodejs', 3, 2],
+        ['postgres', 3, 2],
+      ],
+      fillTitle: /backend engineer/i,
+    },
+    {
+      title: 'Product designer',
+      hoursNeeded: 8,
+      requirements: [
+        ['ui-design', 3, 3],
+        ['ux-research', 3, 2],
+        ['figma', 3, 2],
+      ],
+      fillTitle: null, // left open deliberately
+    },
+  ];
+
+  const { data: exampleProject, error: exampleProjectErr } = await db
+    .from('projects')
+    .insert({
+      org_id: demo.id,
+      name: 'Support ticket theme reports',
+      brief_text:
+        'Internal tool that turns customer support tickets into weekly theme reports. ' +
+        'Roughly 6 weeks. It needs to actually ship, not stay a prototype.',
+      duration_weeks: 6,
+      domain: ['data'],
+      status: 'staffing',
+    })
+    .select('id')
+    .single();
+  die('example project', exampleProjectErr);
+
+  let filledSeats = 0;
+  for (const [i, role] of EXAMPLE_ROLES.entries()) {
+    const { data: roleRow, error: roleErr } = await db
+      .from('project_roles')
+      .insert({
+        project_id: exampleProject.id,
+        title: role.title,
+        hours_needed: role.hoursNeeded,
+        position: i,
+      })
+      .select('id')
+      .single();
+    die('example project role', roleErr);
+
+    die(
+      'example project requirements',
+      (
+        await db.from('requirements').insert(
+          role.requirements.map(([skillId, minLevel, weight]) => ({
+            role_id: roleRow.id,
+            skill_id: skillId,
+            min_level: minLevel,
+            weight,
+          })),
+        )
+      ).error,
+    );
+
+    const candidateIdx = role.fillTitle ? people.findIndex((p) => role.fillTitle.test(p.title)) : -1;
+    const personId = candidateIdx >= 0 ? personIds[candidateIdx] : null;
+    if (personId) filledSeats += 1;
+
+    die(
+      'example project seat',
+      (
+        await db.from('seats').insert({
+          project_id: exampleProject.id,
+          role_id: roleRow.id,
+          person_id: personId,
+          state: personId ? 'filled' : 'open',
+        })
+      ).error,
+    );
+  }
+  console.log(
+    '  example project ' + filledSeats + '/' + EXAMPLE_ROLES.length + ' seats filled — id ' +
+      exampleProject.id,
+  );
+
   // The second org. Ordinary, not demo — invisible to everyone who is not a
   // member, which is the entire point of it existing.
   const { data: atlas, error: atlasErr } = await db
