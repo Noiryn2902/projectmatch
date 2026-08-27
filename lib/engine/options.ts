@@ -1,5 +1,5 @@
 import type { Brief, Person, ScopeFilter, TeamState } from '../types';
-import { autoFill, defaultObjective, improve, membersOf } from './assemble';
+import { autoFill, defaultObjective, improve, indexPool, membersFrom, membersOf } from './assemble';
 import { stretchCount } from './growth';
 import { teamHealth } from './health';
 import { allRequirements, coverage, coveringCount } from './score';
@@ -52,8 +52,8 @@ function stats(team: TeamState, brief: Brief, pool: Person[]) {
 }
 
 /** min covering count across the weighted requirements a team covers, capped at 2, normalised. */
-function busNorm(team: TeamState, brief: Brief, pool: Person[]): number {
-  const m = membersOf(team, pool);
+function busNorm(team: TeamState, brief: Brief, index: Map<string, Person>): number {
+  const m = membersFrom(team, index);
   const weighted = allRequirements(brief).filter((r) => r.weight >= 2);
   const covered = weighted.filter((r) => coveringCount(m, r, COVERED) > 0);
   if (covered.length === 0) return 0;
@@ -61,13 +61,13 @@ function busNorm(team: TeamState, brief: Brief, pool: Person[]): number {
   return Math.min(bf, 2) / 2;
 }
 
-function growthNorm(team: TeamState, brief: Brief, pool: Person[]): number {
+function growthNorm(team: TeamState, brief: Brief, index: Map<string, Person>): number {
   const n = brief.roles.length || 1;
-  return Math.min(1, stretchCount(membersOf(team, pool)) / n);
+  return Math.min(1, stretchCount(membersFrom(team, index)) / n);
 }
 
-function spareNorm(team: TeamState, brief: Brief, pool: Person[]): number {
-  const m = membersOf(team, pool);
+function spareNorm(team: TeamState, brief: Brief, index: Map<string, Person>): number {
+  const m = membersFrom(team, index);
   let sum = 0;
   let n = 0;
   for (const r of brief.roles) {
@@ -127,23 +127,24 @@ export function proposeTeams(brief: Brief, pool: Person[], scope: ScopeFilter): 
   ];
 
   const seen = new Set([sig(base)]);
-  const defObj = defaultObjective(brief, pool);
+  const index = indexPool(pool);
+  const defObj = defaultObjective(brief, pool, index);
 
   const variants: { key: string; label: string; obj: (t: TeamState) => number }[] = [
     {
       key: 'resilient',
       label: 'No single point of failure',
-      obj: (t) => 0.7 * defObj(t) + 0.3 * busNorm(t, brief, pool),
+      obj: (t) => 0.7 * defObj(t) + 0.3 * busNorm(t, brief, index),
     },
     {
       key: 'light',
       label: 'Lightest load',
-      obj: (t) => 0.78 * defObj(t) + 0.22 * spareNorm(t, brief, pool),
+      obj: (t) => 0.78 * defObj(t) + 0.22 * spareNorm(t, brief, index),
     },
     {
       key: 'growth',
       label: 'Develops people',
-      obj: (t) => 0.78 * defObj(t) + 0.22 * growthNorm(t, brief, pool),
+      obj: (t) => 0.78 * defObj(t) + 0.22 * growthNorm(t, brief, index),
     },
   ];
 

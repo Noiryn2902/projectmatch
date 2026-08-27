@@ -406,10 +406,30 @@ story true rather than rhetorical.
 Garbage in, garbage out. *"Your brief does not say how long or how many hours a week — the team it
 produces will be wrong."* Cheap, and it improves every downstream result.
 
-### 6.15 Scale benchmark **[Proposed, one hour]**
+### 6.15 Scale benchmark **[Done — 2026-08-27]**
 
-60 people is nothing. Benchmark the engine at 10,000 and put the number on screen. An hour of work,
-and it makes Efficiency 100 mean something concrete.
+`scripts/bench-engine.ts` (`npm run bench`) runs the real ranking and assembly passes over
+synthetic rosters of 100 / 1,000 / 10,000, deterministic seed, one thread, no IO.
+
+| n | rankCandidates | autoFill | proposeTeams | diagnoseRole | teamHealth |
+|---|---|---|---|---|---|
+| 100 | 4 ms | 58 ms | 136 ms | 0.6 ms | 0.3 ms |
+| 1,000 | 20 ms | 475 ms | 1.1 s | 4 ms | 0.3 ms |
+| 10,000 | **200 ms** | 5.3 s | 13 s | 38 ms | 0.3 ms |
+
+The number that matters is `rankCandidates` — the ranking a user waits on when they open a seat.
+**20 ms for a thousand people, 200 ms for ten thousand**, ~170× the current demo roster. `autoFill`
+and `proposeTeams` are heavier batch operations (nobody blocks on "propose a whole team from a
+10,000-person roster"), and even those run in seconds.
+
+Writing the benchmark exposed a real bug: `improve()`'s objective rebuilt a full pool index on
+every candidate of every pass — O(pool²). Fixed by indexing the pool once (`indexPool` /
+`membersFrom` in `assemble.ts`, threaded through `defaultObjective` and the option variant
+objectives) and precomputing which people can hold each seat. `autoFill` at 10k went 27.7 s → 5.3 s,
+`proposeTeams` 117 s → 13 s. All 91 engine assertions unchanged — the refactor is behaviour-preserving.
+
+**Not done:** surfacing a live "ranked N people in X ms" on screen — belongs with the Phase 5
+persuasion work and the deck.
 
 ---
 

@@ -15,12 +15,20 @@ export interface Candidate {
   roleMatch: number;
 }
 
-export function membersOf(team: TeamState, pool: Person[]): Person[] {
-  const byId = new Map(pool.map((p) => [p.id, p]));
+/** Index a pool by id once, for callers that resolve teams in a hot loop. */
+export function indexPool(pool: Person[]): Map<string, Person> {
+  return new Map(pool.map((p) => [p.id, p]));
+}
+
+export function membersFrom(team: TeamState, index: Map<string, Person>): Person[] {
   return Object.values(team)
     .filter((id): id is string => Boolean(id))
-    .map((id) => byId.get(id))
+    .map((id) => index.get(id))
     .filter((p): p is Person => Boolean(p));
+}
+
+export function membersOf(team: TeamState, pool: Person[]): Person[] {
+  return membersFrom(team, indexPool(pool));
 }
 
 function inScope(p: Person, scope: ScopeFilter): boolean {
@@ -139,10 +147,14 @@ export function autoFill(brief: Brief, pool: Person[], scope: ScopeFilter): Team
  * everyone can actually hold their seat so the optimiser does not park a
  * designer as the DBA to win a coverage point.
  */
-export function defaultObjective(brief: Brief, pool: Person[]): (t: TeamState) => number {
+export function defaultObjective(
+  brief: Brief,
+  pool: Person[],
+  index: Map<string, Person> = indexPool(pool),
+): (t: TeamState) => number {
   const reqs = allRequirements(brief);
   return (t) => {
-    const m = membersOf(t, pool);
+    const m = membersFrom(t, index);
     const seatFit =
       brief.roles.reduce((s, r) => {
         const p = m.find((x) => x.id === t[r.id]);
@@ -158,10 +170,18 @@ export function improve(
   brief: Brief,
   pool: Person[],
   scope: ScopeFilter,
-  objective: (t: TeamState) => number = defaultObjective(brief, pool),
+  objective?: (t: TeamState) => number,
 ): TeamState {
+  const obj = objective ?? defaultObjective(brief, pool);
   const eligible = pool.filter((p) => p.openToProjects && inScope(p, scope));
   const next: TeamState = { ...team };
+
+  // roleMatch(p, role) does not depend on team state, so the set of people
+  // who can hold each seat is fixed — compute it once instead of on every
+  // swap of every pass.
+  const canHold = new Map<string, Person[]>(
+    brief.roles.map((role) => [role.id, eligible.filter((p) => roleMatch(p, role) >= SEAT_FLOOR)]),
+  );
 
   for (let pass = 0; pass < 3; pass++) {
     let improved = false;
@@ -170,13 +190,12 @@ export function improve(
       const taken = new Set(Object.values(next).filter(Boolean) as string[]);
 
       let bestId = next[role.id];
-      let bestScore = objective(next);
+      let bestScore = obj(next);
 
-      for (const p of eligible) {
+      for (const p of canHold.get(role.id) ?? []) {
         if (taken.has(p.id)) continue;
-        if (roleMatch(p, role) < SEAT_FLOOR) continue;
         const trial: TeamState = { ...next, [role.id]: p.id };
-        const score = objective(trial);
+        const score = obj(trial);
         if (score > bestScore + 0.001) {
           bestScore = score;
           bestId = p.id;
