@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import AppShell from '@/components/app/AppShell';
 import Avatar from '@/components/Avatar';
 import { hasDatabase } from '@/lib/env';
 import { getDemoOrg } from '@/lib/data/orgs';
@@ -72,19 +73,15 @@ export default async function ProjectPage({
   const declineCount = readOnly ? 0 : Object.keys(declines).length;
 
   return (
-    <main className="pm-grain min-h-screen">
-      <header className="border-b border-line">
-        <div className="mx-auto flex max-w-[860px] items-center justify-between px-5 py-3">
-          <Link href="/" className="font-display text-[17px] font-bold tracking-tight">
-            Project<span className="text-accent">Match</span>
-          </Link>
-          <span className="rounded-full border border-line px-2.5 py-1 text-[11px] text-muted uppercase">
-            {project.status}
-          </span>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-[860px] px-5 py-10">
+    <AppShell
+      notifications={0}
+      action={
+        <span className="rounded-full border border-line px-2.5 py-1 text-[11px] text-muted uppercase">
+          {project.status}
+        </span>
+      }
+    >
+      <div>
         <p className="text-[11px] tracking-wide text-faint uppercase">
           {project.name || 'Untitled project'}
         </p>
@@ -122,8 +119,8 @@ export default async function ProjectPage({
             </p>
             <p className="mt-1 text-[12px] text-muted">
               {emailed
-                ? 'The link is on its way to their inbox. Here it is too, in case you need to pass it along another way.'
-                : 'No email went out — either there is no address on file or email is not configured here. Copy this link to the person you are inviting; it works for someone with no account.'}
+                ? 'Sent. Here is the link too, just in case.'
+                : 'No email address on file — send them this link. It works without an account.'}
             </p>
             <code className="mt-2.5 block overflow-x-auto rounded-lg border border-line bg-canvas px-3 py-2 text-[11px] break-all text-accent">
               /invite/{invited}
@@ -139,7 +136,7 @@ export default async function ProjectPage({
                 : `${declineCount} seats were declined and are open again`}
             </p>
             <p className="mt-1 text-[12px] text-muted">
-              Open one below to see the roster re-ranked against the team as it now stands.
+              Open the seat to see who fits now.
             </p>
           </div>
         )}
@@ -297,7 +294,7 @@ export default async function ProjectPage({
           <section className="mt-8">
             <h2 className="font-display text-[15px] font-semibold text-ink">Awaiting a reply</h2>
             <p className="mt-1 text-[12px] text-muted">
-              These seats are held, not filled. Withdrawing one reopens it immediately.
+              Held, not filled. Withdrawing reopens the seat.
             </p>
             <ul className="mt-3 rounded-xl border border-line bg-panel">
               {pending.map((inv) => (
@@ -337,8 +334,7 @@ export default async function ProjectPage({
           <h2 className="font-display text-[15px] font-semibold text-ink">Conversation</h2>
           {!chatOpen ? (
             <p className="mt-2 rounded-xl border border-line border-dashed bg-panel px-4 py-3 text-[12px] text-faint">
-              Opens once the first person accepts a seat — a team that exists, not one that was
-              proposed.
+              Opens when someone accepts a seat.
             </p>
           ) : (
             <div className="mt-3 rounded-xl border border-line bg-panel">
@@ -366,8 +362,7 @@ export default async function ProjectPage({
               </ul>
               {readOnly ? (
                 <p className="border-t border-line px-4 py-3 text-[11px] text-faint">
-                  This is the demo organisation — the conversation is visible but closed to new
-                  messages.
+                  Demo organisation — read only.
                 </p>
               ) : (
                 <form
@@ -397,6 +392,6 @@ export default async function ProjectPage({
           )}
         </section>
       </div>
-    </main>
+    </AppShell>
   );
 }

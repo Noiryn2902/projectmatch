@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppShell from '@/components/app/AppShell';
 import { notFound, redirect } from 'next/navigation';
 
 import { getOrgBySlug } from '@/lib/data/orgs';
@@ -54,17 +54,8 @@ export default async function MyProfilePage({
     '';
 
   return (
-    <main className="pm-grain min-h-screen">
-      <header className="border-b border-line">
-        <div className="mx-auto flex max-w-[620px] items-center justify-between px-5 py-3">
-          <span className="font-display text-[17px] font-bold tracking-tight">{org.name}</span>
-          <Link href={`/app/org/${slug}`} className="text-[13px] text-muted hover:text-ink">
-            Skip for now
-          </Link>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-[620px] px-5 py-10">
+    <AppShell back={{ href: `/app/org/${slug}`, label: org.name }}>
+      <div>
         <p className="text-[11px] tracking-wide text-faint uppercase">Step 2 of 2</p>
         <h1 className="mt-1 font-display text-2xl font-bold text-balance text-ink">
           Add yourself to {org.name}
@@ -202,6 +193,6 @@ export default async function MyProfilePage({
           </p>
         </form>
       </div>
-    </main>
+    </AppShell>
   );
 }

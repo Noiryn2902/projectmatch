@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import AppShell from '@/components/app/AppShell';
 import Avatar from '@/components/Avatar';
+import { getMyWork } from '@/lib/data/me';
 import { getOrgBySlug } from '@/lib/data/orgs';
 import { getMyPersonId, listPeople } from '@/lib/data/people';
 import { listProjects } from '@/lib/data/projects';
@@ -9,12 +11,7 @@ import { listProjects } from '@/lib/data/projects';
 import { addPersonAction } from './actions';
 
 /**
- * The org's home: its projects, and the roster they get staffed from.
- * Deliberately plain — lists and one-row forms — because the point of this
- * slice is proving the whole pipe works end to end (sign in, own an org,
- * grow its roster, spin up a real project, have the database and RLS
- * actually mean it) rather than building the polished version of any one
- * part of it. CSV import and profile claiming are next.
+ * The org: its projects, and the roster they get staffed from.
  *
  * A 404 here does double duty: it is what a genuinely unknown slug produces,
  * and it is also what RLS silently returns for an org you are not a member
@@ -35,22 +32,33 @@ export default async function OrgRosterPage({
   const org = await getOrgBySlug(slug);
   if (!org) notFound();
 
-  const [people, projects, myPersonId] = await Promise.all([
+  const [people, projects, myPersonId, work] = await Promise.all([
     listPeople(org.id),
     listProjects(org.id),
     getMyPersonId(org.id),
+    getMyWork(org.id),
   ]);
   const importedCount = imported ? Number(imported) : 0;
 
   return (
-    <main className="pm-grain min-h-screen">
-      <header className="border-b border-line">
-        <div className="mx-auto max-w-[720px] px-5 py-3">
-          <span className="font-display text-[17px] font-bold tracking-tight">{org.name}</span>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-[720px] px-5 py-10">
+    <AppShell
+      org={org}
+      notifications={work.invitations.length}
+      tabs={[
+        { href: '/app', label: 'Home' },
+        { href: `/app/org/${org.slug}`, label: 'Organisation' },
+      ]}
+      active={`/app/org/${org.slug}`}
+      action={
+        <Link
+          href={`/app/org/${org.slug}/new`}
+          className="rounded-full bg-accent px-3 py-1.5 text-[12px] font-semibold text-canvas hover:opacity-90"
+        >
+          New project
+        </Link>
+      }
+    >
+      <div>
         {!myPersonId && (
           <Link
             href={`/app/org/${org.slug}/me`}
@@ -61,8 +69,7 @@ export default async function OrgRosterPage({
                 You are not on this roster yet
               </span>
               <span className="mt-0.5 block text-[12px] text-muted">
-                Add yourself — paste a résumé and we read your skills out of it. Until then you
-                appear in no ranking and cannot endorse anyone.
+                Add yourself so teams can find you.
               </span>
             </span>
             <span className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-panel">
@@ -71,15 +78,7 @@ export default async function OrgRosterPage({
           </Link>
         )}
 
-        <div className="flex items-baseline justify-between">
-          <h1 className="font-display text-lg font-semibold text-ink">Projects</h1>
-          <Link
-            href={`/app/org/${org.slug}/new`}
-            className="rounded-full bg-accent px-3 py-1.5 text-[12px] font-medium text-panel transition-opacity hover:opacity-90"
-          >
-            New project
-          </Link>
-        </div>
+        <h1 className="font-display text-lg font-semibold text-ink">Projects</h1>
 
         <section className="mt-5 rounded-xl border border-line bg-panel">
           {projects.length === 0 ? (
@@ -204,6 +203,6 @@ export default async function OrgRosterPage({
           </p>
         </section>
       </div>
-    </main>
+    </AppShell>
   );
 }

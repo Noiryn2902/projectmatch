@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppShell from '@/components/app/AppShell';
 import { notFound } from 'next/navigation';
 
 import Avatar from '@/components/Avatar';
@@ -130,16 +130,8 @@ export default async function StaffSeatPage({
   const readOnly = demoOrg !== null && project.orgId === demoOrg.id;
 
   return (
-    <main className="pm-grain min-h-screen">
-      <header className="border-b border-line">
-        <div className="mx-auto flex max-w-[720px] items-center justify-between px-5 py-3">
-          <Link href={`/project/${project.id}`} className="text-[13px] text-muted hover:text-ink">
-            &larr; Back to project
-          </Link>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-[720px] px-5 py-10">
+    <AppShell back={{ href: `/project/${project.id}`, label: "Back to project" }}>
+      <div>
         <p className="text-[11px] tracking-wide text-faint uppercase">Staffing</p>
         <h1 className="mt-1 font-display text-lg font-semibold text-ink">{role.title}</h1>
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -164,18 +156,14 @@ export default async function StaffSeatPage({
               .
             </p>
             <p className="mt-1 text-[12px] text-muted">
-              The seat is open again. Below is the roster ranked against the team as it stands right
-              now — whoever declined is kept in view but moved to the end.
+              Re-ranked against the team as it now stands.
             </p>
           </div>
         )}
 
         <p className="mt-5 text-[12px] text-muted">
-          Among people who can hold this seat, ranked by what they add to the team as it already
-          stands — not by how strong they look on their own. A{' '}
-          <span className="text-faint">self-reported</span> tag means the engine has already
-          discounted that person&rsquo;s levels: an endorsed or verified skill counts for more than
-          one someone typed about themselves.
+          Ranked by what they <span className="text-ink">add to this team</span>, not how good they
+          look alone.
         </p>
 
         {qualified.length === 0 && <Infeasibility diagnosis={diagnoseRole(available, role)} />}
@@ -210,8 +198,7 @@ export default async function StaffSeatPage({
           <>
             <h2 className="mt-8 text-[13px] font-medium text-ink">Below the bar for this seat</h2>
             <p className="mt-1 text-[12px] text-muted">
-              Shown because the roster is small. Their contribution to the wider team can still look
-              high — that is a different question from whether they can do this job.
+              They may still add a lot to the team — a different question from doing this job.
             </p>
             <section className="mt-3 rounded-xl border border-line border-dashed bg-panel opacity-75">
               <ul>
@@ -237,11 +224,11 @@ export default async function StaffSeatPage({
 
         <p className="mt-3 text-[11px] text-faint">
           {readOnly
-            ? 'This is the demo organisation — anyone can look at it, nobody can change it. Create your own organisation to staff a project for real.'
-            : 'Inviting holds the seat but does not fill it. It is theirs once they accept, and reopens if they decline.'}
+            ? 'Demo organisation — read only.'
+            : 'Inviting holds the seat. It is theirs once they accept.'}
         </p>
       </div>
-    </main>
+    </AppShell>
   );
 }
 

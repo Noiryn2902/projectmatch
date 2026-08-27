@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppShell from '@/components/app/AppShell';
 import { notFound } from 'next/navigation';
 
 import Avatar from '@/components/Avatar';
@@ -68,16 +68,8 @@ export default async function PersonPage({
   const skills = await getPersonSkillDetail(person.id, myPersonId);
 
   return (
-    <main className="pm-grain min-h-screen">
-      <header className="border-b border-line">
-        <div className="mx-auto flex max-w-[720px] items-center justify-between px-5 py-3">
-          <Link href={`/app/org/${slug}`} className="text-[13px] text-muted hover:text-ink">
-            &larr; {org.name}
-          </Link>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-[720px] px-5 py-10">
+    <AppShell back={{ href: `/app/org/${slug}`, label: org.name }}>
+      <div>
         <div className="flex items-center gap-4">
           <Avatar person={person} size={52} />
           <div>
@@ -211,8 +203,7 @@ export default async function PersonPage({
         )}
         {canEndorse && skills.length > 0 && (
           <p className="mt-2 text-[11px] text-faint">
-            Endorsing a self-reported or résumé-scraped level tells the engine to trust it more —
-            a colleague vouching counts for more than a claim.
+            Endorsing tells the engine to trust that level more.
           </p>
         )}
 
@@ -252,7 +243,7 @@ export default async function PersonPage({
           </section>
         )}
       </div>
-    </main>
+    </AppShell>
   );
 }
 

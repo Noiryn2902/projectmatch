@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppShell from '@/components/app/AppShell';
 import { notFound } from 'next/navigation';
 
 import Avatar from '@/components/Avatar';
@@ -48,16 +48,8 @@ export default async function ComparePage({ params }: { params: Promise<{ id: st
     deltas.push(`${en.stretch - kw.stretch} more ${en.stretch - kw.stretch === 1 ? 'person' : 'people'} in a growth pairing`);
 
   return (
-    <main className="pm-grain min-h-screen">
-      <header className="border-b border-line">
-        <div className="mx-auto flex max-w-[900px] items-center justify-between px-5 py-3">
-          <Link href={`/project/${project.id}`} className="text-[13px] text-muted hover:text-ink">
-            &larr; Back to project
-          </Link>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-[900px] px-5 py-10">
+    <AppShell back={{ href: `/project/${project.id}`, label: "Back to project" }}>
+      <div>
         <p className="text-[11px] tracking-wide text-faint uppercase">Same brief, same roster</p>
         <h1 className="mt-1 max-w-[46ch] font-display text-xl font-semibold text-balance">
           {project.brief.text}
@@ -150,7 +142,7 @@ export default async function ComparePage({ params }: { params: Promise<{ id: st
           )}
         </div>
       </div>
-    </main>
+    </AppShell>
   );
 }
 

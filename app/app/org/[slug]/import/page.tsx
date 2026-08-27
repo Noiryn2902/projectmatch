@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppShell from '@/components/app/AppShell';
 import { notFound, redirect } from 'next/navigation';
 
 import { getMyRole, getOrgBySlug } from '@/lib/data/orgs';
@@ -30,16 +30,8 @@ export default async function ImportRosterPage({ params }: { params: Promise<{ s
   const existingNames = people.map((p) => p.name);
 
   return (
-    <main className="pm-grain min-h-screen">
-      <header className="border-b border-line">
-        <div className="mx-auto flex max-w-[720px] items-center justify-between px-5 py-3">
-          <Link href={`/app/org/${slug}`} className="text-[13px] text-muted hover:text-ink">
-            &larr; {org.name}
-          </Link>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-[720px] px-5 py-10">
+    <AppShell back={{ href: `/app/org/${slug}`, label: org.name }}>
+      <div>
         <p className="text-[11px] tracking-wide text-faint uppercase">Roster</p>
         <h1 className="mt-1 font-display text-lg font-semibold text-ink">Import from a spreadsheet</h1>
         <p className="mt-2 text-[12px] text-muted">
@@ -53,6 +45,6 @@ export default async function ImportRosterPage({ params }: { params: Promise<{ s
 
         <ImportForm orgId={org.id} slug={slug} existingNames={existingNames} />
       </div>
-    </main>
+    </AppShell>
   );
 }
