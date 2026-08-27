@@ -531,9 +531,8 @@ UI in a browser with **no session at all**: the invite page rendered the real na
 message; clicking Accept filled the seat; the database confirmed `filled` with the right person id
 and the invitation row showed `accepted` with a real timestamp.
 
-**Not done, stated rather than left implicit:** no email delivery — the link is shown on the
-project page for now, to be copied and sent by hand. No revoke button. No UI listing pending
-invitations. Chat still does not exist to unlock.
+**Not done, stated rather than left implicit:** ~~no email delivery~~ (done, see two slices below).
+No revoke button. No UI listing pending invitations. Chat still does not exist to unlock.
 
 **Done (2026-08-27) — the decline proposes the next move.** A decline used to be a silent database
 update: `respond_to_invitation()` reopened the seat, and the owner had to notice it was open again
@@ -559,8 +558,25 @@ against the live database confirmed the new embedded PostgREST query (`invitatio
 A full click-through of decline → re-rank against live data with a real session is still to be
 done through the UI.
 
-**Still deferred after this slice:** email delivery, a revoke button, a pending-invitations list,
-and chat unlocking on acceptance.
+**Done (2026-08-27) — invitations that leave the building.** Inviting someone now emails them the
+`/invite/[token]` link when there is an address on file and email is configured. The design follows
+the AI cascade's rule exactly: `lib/email/send.ts` never throws and returns a plain `delivered`
+boolean, and with no `RESEND_API_KEY` / `EMAIL_FROM` set it logs the message to the server console
+instead — the link is on the project page regardless, so a bounce or a missing key never strands an
+invitation. `lib/email/build.ts` is the pure body builder (subject + text + HTML), split out from
+the IO so its escaping can be tested: the brief and the personal note are user-controlled and must
+not inject markup. `inviteAction` derives the absolute URL from request headers, sends, and passes
+`emailed=1` back so the project-page banner reads "Invitation emailed" rather than "ready to send".
+
+**Tests:** `scripts/test-email.ts` — 9 assertions, mostly that `<script>` in a brief and
+`<img onerror>` in a note come out escaped. Wired into `verify` as `test:email`. Full run green:
+typecheck + lint + 51 engine + 22 import + 9 email + build.
+
+**Not verified live** — needs `RESEND_API_KEY` + a Resend-verified `EMAIL_FROM`, and a real invitee
+address, to confirm an actual email arrives. The keyless fallback path (console log + link on page)
+is what runs until then.
+
+**Still deferred:** a revoke button, a pending-invitations list, and chat unlocking on acceptance.
 
 ### Phase 3 — Skills you can trust
 

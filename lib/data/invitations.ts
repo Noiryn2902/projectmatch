@@ -31,6 +31,7 @@ export interface InvitationView {
   message: string | null;
   expiresAt: string;
   personName: string;
+  personEmail: string | null;
   roleTitle: string;
   projectId: string;
   projectBrief: string;
@@ -87,7 +88,7 @@ export async function getInvitationByToken(token: string): Promise<InvitationVie
     .from('invitations')
     .select(
       `id, status, message, expires_at,
-       people ( name ),
+       people ( name, email ),
        seats ( project_roles ( title ), projects ( id, brief_text, orgs ( name ) ) )`,
     )
     .eq('token', token)
@@ -101,7 +102,7 @@ export async function getInvitationByToken(token: string): Promise<InvitationVie
     status: InvitationStatus;
     message: string | null;
     expires_at: string;
-    people: { name: string } | null;
+    people: { name: string; email: string | null } | null;
     seats: {
       project_roles: { title: string } | null;
       projects: { id: string; brief_text: string; orgs: { name: string } | null } | null;
@@ -114,6 +115,7 @@ export async function getInvitationByToken(token: string): Promise<InvitationVie
     message: row.message,
     expiresAt: row.expires_at,
     personName: row.people?.name ?? 'Someone',
+    personEmail: row.people?.email ?? null,
     roleTitle: row.seats?.project_roles?.title ?? 'a role',
     projectId: row.seats?.projects?.id ?? '',
     projectBrief: row.seats?.projects?.brief_text ?? '',

@@ -25,10 +25,10 @@ export default async function ProjectPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ invited?: string }>;
+  searchParams: Promise<{ invited?: string; emailed?: string }>;
 }) {
   const { id } = await params;
-  const { invited } = await searchParams;
+  const { invited, emailed } = await searchParams;
 
   if (!hasDatabase) {
     // Nothing before this route had a concept of a persisted project — there
@@ -95,10 +95,13 @@ export default async function ProjectPage({
 
         {invited && (
           <div className="mt-6 rounded-xl border border-line border-l-2 border-l-accent bg-panel px-4 py-3.5">
-            <p className="text-[13px] font-medium text-ink">Invitation ready to send</p>
+            <p className="text-[13px] font-medium text-ink">
+              {emailed ? 'Invitation emailed' : 'Invitation ready to send'}
+            </p>
             <p className="mt-1 text-[12px] text-muted">
-              Email delivery is not built yet, so this link has to be passed along by hand. It works
-              for someone with no account.
+              {emailed
+                ? 'The link is on its way to their inbox. Here it is too, in case you need to pass it along another way.'
+                : 'No email went out — either there is no address on file or email is not configured here. Copy this link to the person you are inviting; it works for someone with no account.'}
             </p>
             <code className="mt-2.5 block overflow-x-auto rounded-lg border border-line bg-canvas px-3 py-2 text-[11px] break-all text-accent">
               /invite/{invited}

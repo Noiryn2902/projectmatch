@@ -1,8 +1,10 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { inviteToSeat } from '@/lib/data/invitations';
+import { sendInvitationEmail } from '@/lib/email/invitation';
 import { setSeatPerson } from '@/lib/data/projects';
 
 export async function fillSeatAction(formData: FormData) {
@@ -20,10 +22,11 @@ export async function fillSeatAction(formData: FormData) {
 }
 
 /**
- * Asks rather than assigns. Redirects to the project with the token in the
- * query, because until email delivery exists somebody has to carry the link
- * to the recipient by hand — and pretending otherwise would hide the one
- * piece of this that is not yet real.
+ * Asks rather than assigns. Sends the invitation link by email when there is
+ * an address to send it to and email is configured; otherwise the link is
+ * shown on the project page to be carried by hand. Either way the token is
+ * in the query so the link is always recoverable — a bounced or
+ * unconfigured send never strands an invitation.
  */
 export async function inviteAction(formData: FormData) {
   const projectId = String(formData.get('projectId') ?? '');
@@ -34,5 +37,10 @@ export async function inviteAction(formData: FormData) {
 
   const token = await inviteToSeat(roleId, personId);
 
-  redirect(`/project/${projectId}?invited=${token}`);
+  const h = await headers();
+  const host = h.get('host') ?? 'localhost:3000';
+  const proto = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
+  const { emailed } = await sendInvitationEmail(token, `${proto}://${host}/invite/${token}`);
+
+  redirect(`/project/${projectId}?invited=${token}${emailed ? '&emailed=1' : ''}`);
 }
