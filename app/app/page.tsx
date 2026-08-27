@@ -6,7 +6,7 @@ import Avatar from '@/components/Avatar';
 import { listOrgsForUser } from '@/lib/data/orgs';
 import { getMyWork, getNotices } from '@/lib/data/me';
 import { getPerson } from '@/lib/data/people';
-import { listProjects } from '@/lib/data/projects';
+import { listProjectCards } from '@/lib/data/projects';
 import { getCurrentUser } from '@/lib/supabase/server';
 
 import { createOrgAction } from './actions';
@@ -29,11 +29,8 @@ export default async function AppHome() {
   if (orgs.length === 0) return <Onboard email={user.email ?? ''} />;
 
   const org = orgs[0];
-  const [work, projects, notices] = await Promise.all([
-    getMyWork(org.id),
-    listProjects(org.id),
-    getNotices(org.id),
-  ]);
+  const [work, notices] = await Promise.all([getMyWork(org.id), getNotices(org.id)]);
+  const cards = await listProjectCards(org.id, work.personId);
   const me = work.personId ? await getPerson(work.personId) : null;
 
   return (
@@ -104,103 +101,99 @@ export default async function AppHome() {
         </Link>
       )}
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-[1fr_260px]">
-        <section>
+      {/* min-w-0 on the grid child: without it a long project name forces the
+          column wider than the viewport and the whole page scrolls sideways,
+          which is exactly what was happening. */}
+      <div className="mt-8 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <section className="min-w-0">
           {/*
-            Projects as tiles, with a way to start one and a way to remove
-            one. This is the workspace — the thing you come back to — so it
-            leads, and everything you own is on it rather than a click away
-            behind an org page.
+            One list, not two. "Projects" and "Your teams" showed the same
+            project twice and answered nearly the same question; the ones you
+            sit on are marked instead.
           */}
           <div className="flex items-baseline justify-between">
             <h2 className="text-[11px] tracking-wide text-faint uppercase">Projects</h2>
-            <span className="text-[11px] text-faint">{projects.length}</span>
+            <span className="text-[11px] text-faint">{cards.length}</span>
           </div>
-          <ul className="mt-2 mb-8 grid gap-2.5 sm:grid-cols-2">
-            {projects.map((proj) => (
-              <li
-                key={proj.id}
-                className="group relative rounded-xl border border-line bg-panel transition-colors hover:border-line-strong"
-              >
-                <Link href={`/project/${proj.id}`} className="block px-4 py-3.5">
-                  <span className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-[13px] font-medium text-ink">
-                      {proj.name || 'Untitled project'}
-                    </span>
-                    <span className="shrink-0 text-[10px] text-faint uppercase">{proj.status}</span>
-                  </span>
-                  <span className="mt-2 block text-[11px] text-faint">Open</span>
-                </Link>
-                {/* Only shows on hover, so the tile stays calm until you
-                    actually reach for it. */}
-                <form
-                  action={deleteProjectAction}
-                  className="absolute right-3 bottom-3 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
-                >
-                  <input type="hidden" name="projectId" value={proj.id} />
-                  <input type="hidden" name="orgSlug" value={org.slug} />
-                  <button
-                    type="submit"
-                    aria-label={`Delete ${proj.name || 'project'}`}
-                    className="text-[11px] text-faint transition-colors hover:text-warn"
-                  >
-                    Delete
-                  </button>
-                </form>
-              </li>
-            ))}
 
-            <li>
+          <ul className="mt-2 grid gap-2.5 sm:grid-cols-2">
+            {cards.map((p) => {
+              const pct = Math.round(p.coverage * 100);
+              return (
+                <li
+                  key={p.id}
+                  className="group relative min-w-0 rounded-xl border border-line bg-panel transition-colors hover:border-line-strong"
+                >
+                  <Link href={`/project/${p.id}`} className="block p-4">
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="min-w-0 truncate text-[13px] font-medium text-ink">
+                        {p.name || 'Untitled project'}
+                      </span>
+                      {p.myRole && (
+                        <span className="shrink-0 rounded-full border border-accent/40 px-1.5 text-[10px] text-accent">
+                          you
+                        </span>
+                      )}
+                    </span>
+
+                    <span className="mt-1 line-clamp-2 block text-[12px] leading-snug text-muted">
+                      {p.brief}
+                    </span>
+
+                    <span className="mt-3 flex items-center gap-2">
+                      {p.members.slice(0, 4).map((m) => (
+                        <Avatar key={m.id} person={m} size={22} />
+                      ))}
+                      {p.filled === 0 && (
+                        <span className="text-[11px] text-faint">Nobody seated yet</span>
+                      )}
+                      <span className="ml-auto shrink-0 text-[11px] tabular-nums text-faint">
+                        {p.filled}/{p.seats}
+                      </span>
+                    </span>
+
+                    <span className="mt-2 block h-1 overflow-hidden rounded-full bg-panel-2">
+                      <span
+                        className="block h-full rounded-full bg-good"
+                        style={{ width: pct + '%' }}
+                      />
+                    </span>
+
+                    <span className="mt-2 flex flex-wrap items-center gap-x-1.5 text-[11px] text-faint">
+                      <span>{pct}% covered</span>
+                      {p.waiting > 0 && <span className="text-accent">· {p.waiting} waiting</span>}
+                      {p.myRole && <span className="truncate">· you are {p.myRole}</span>}
+                    </span>
+                  </Link>
+
+                  <form
+                    action={deleteProjectAction}
+                    className="absolute top-3 right-3 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+                  >
+                    <input type="hidden" name="projectId" value={p.id} />
+                    <input type="hidden" name="orgSlug" value={org.slug} />
+                    <button
+                      type="submit"
+                      aria-label={'Delete ' + (p.name || 'project')}
+                      className="text-[11px] text-faint transition-colors hover:text-warn"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                </li>
+              );
+            })}
+
+            <li className="min-w-0">
               <Link
                 href={`/app/org/${org.slug}/new`}
-                className="flex h-full min-h-[84px] items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong px-4 py-3.5 text-[13px] text-muted transition-colors hover:border-accent hover:text-accent"
+                className="flex h-full min-h-[140px] items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong p-4 text-[13px] text-muted transition-colors hover:border-accent hover:text-accent"
               >
-                <span aria-hidden className="text-[18px] leading-none">
-                  +
-                </span>
+                <span aria-hidden className="text-[18px] leading-none">+</span>
                 New project
               </Link>
             </li>
           </ul>
-
-          <h2 className="text-[11px] tracking-wide text-faint uppercase">Your teams</h2>
-          {work.teams.length === 0 ? (
-            <p className="mt-2 rounded-xl border border-dashed border-line bg-panel px-4 py-5 text-[13px] text-faint">
-              {me
-                ? 'Nothing yet. Teams you accept a seat on appear here.'
-                : 'Add yourself to the roster and teams you join will appear here.'}
-            </p>
-          ) : (
-            <ul className="mt-2 space-y-2">
-              {work.teams.map((t) => (
-                <li key={t.projectId}>
-                  <Link
-                    href={`/project/${t.projectId}`}
-                    className="block rounded-xl border border-line bg-panel px-4 py-3.5 transition-colors hover:border-line-strong"
-                  >
-                    <span className="flex items-baseline justify-between gap-3">
-                      <span className="text-[13px] font-medium text-ink">{t.projectName}</span>
-                      <span className="shrink-0 text-[11px] text-faint uppercase">{t.status}</span>
-                    </span>
-                    <span className="mt-0.5 block truncate text-[12px] text-muted">{t.brief}</span>
-                    <span className="mt-1.5 flex items-center gap-2 text-[11px] text-faint">
-                      <span>
-                        You are {t.roleTitle} &middot; {t.hoursNeeded} hrs/wk
-                        {t.teammates > 0 &&
-                          ` · with ${t.teammates} other${t.teammates === 1 ? '' : 's'}`}
-                      </span>
-                      <span className="ml-auto flex shrink-0 items-center gap-1 text-accent">
-                        <svg viewBox="0 0 16 16" className="size-3.5 fill-current" aria-hidden="true">
-                          <path d="M8 2c-3.3 0-6 2.2-6 4.9 0 1.5.8 2.9 2.1 3.8-.1.6-.4 1.4-1 2.1 1.3-.2 2.4-.7 3.1-1.2.6.1 1.2.2 1.8.2 3.3 0 6-2.2 6-4.9S11.3 2 8 2Z" />
-                        </svg>
-                        Open chat
-                      </span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
 
         <aside className="space-y-4">
@@ -228,7 +221,7 @@ export default async function AppHome() {
           <section className="rounded-xl border border-line bg-panel p-4">
             <h2 className="text-[11px] tracking-wide text-faint uppercase">{org.name}</h2>
             <p className="mt-2 text-[13px] text-ink">
-              {projects.length} project{projects.length === 1 ? '' : 's'}
+              {cards.length} project{cards.length === 1 ? '' : 's'}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Link

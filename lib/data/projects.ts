@@ -363,3 +363,116 @@ export async function deleteProject(projectId: string): Promise<void> {
     throw new Error('Could not delete the project: ' + error.message);
   }
 }
+
+export interface ProjectCard extends ProjectSummary {
+  brief: string;
+  seats: number;
+  filled: number;
+  waiting: number;
+  /** Coverage 0..1, computed from who actually holds a seat. */
+  coverage: number;
+  /** Everyone seated, for the faces on the tile. */
+  members: Person[];
+  /** The role you hold here, if you hold one. */
+  myRole: string | null;
+}
+
+/**
+ * Everything a project tile needs, for a whole org, without one query per
+ * project.
+ *
+ * The dashboard used to show a name and the word "Open", which told you
+ * nothing and made a grid of six projects unreadable. A tile should answer
+ * "what state is this in" at a glance: who is on it, how far along the
+ * staffing is, and whether anything is waiting on someone.
+ */
+export async function listProjectCards(
+  orgId: string,
+  myPersonId: string | null,
+): Promise<ProjectCard[]> {
+  const supabase = await createServerSupabase();
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select(
+      `id, org_id, name, brief_text, duration_weeks, domain, status, created_at,
+       project_roles ( id, title, hours_needed, position, requirements ( skill_id, min_level, weight ),
+         seats ( person_id, state ) )`,
+    )
+    .eq('org_id', orgId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error('Could not load projects: ' + error.message);
+
+  type CardRoleRow = RoleRow & { seats: { person_id: string | null; state: string }[] | null };
+  const rows = (data ?? []) as unknown as (Omit<ProjectRow, 'project_roles'> & {
+    project_roles: CardRoleRow[] | null;
+  })[];
+
+  // One lookup for every seated person across every project, rather than a
+  // round trip per tile.
+  const everyone = [
+    ...new Set(
+      rows.flatMap((p) =>
+        (p.project_roles ?? []).flatMap((r) =>
+          (r.seats ?? [])
+            .filter((s) => s.state === 'filled' && s.person_id)
+            .map((s) => s.person_id as string),
+        ),
+      ),
+    ),
+  ];
+  const people = await getPeopleByIds(everyone);
+  const byId = new Map(people.map((p) => [p.id, p]));
+
+  return rows.map((row) => {
+    const roleRows = row.project_roles ?? [];
+    const roles: Role[] = roleRows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      hoursNeeded: r.hours_needed,
+      requirements: (r.requirements ?? []).map((req) => ({
+        skillId: req.skill_id,
+        minLevel: req.min_level,
+        weight: req.weight,
+      })),
+    }));
+
+    const members: Person[] = [];
+    let waiting = 0;
+    let myRole: string | null = null;
+
+    for (const r of roleRows) {
+      const seat = (r.seats ?? [])[0];
+      if (!seat) continue;
+      if (seat.state === 'invited') waiting++;
+      if (seat.state === 'filled' && seat.person_id) {
+        const p = byId.get(seat.person_id);
+        if (p) members.push(p);
+        if (seat.person_id === myPersonId) myRole = r.title;
+      }
+    }
+
+    const brief: Brief = {
+      text: row.brief_text,
+      roles,
+      durationWeeks: row.duration_weeks,
+      domain: row.domain ?? [],
+    };
+
+    return {
+      id: row.id,
+      orgId: row.org_id,
+      name: row.name,
+      status: row.status,
+      createdAt: row.created_at,
+      brief: row.brief_text,
+      seats: roles.length,
+      filled: members.length,
+      waiting,
+      coverage: teamHealth(brief, members, roles.length).coverage,
+      members,
+      myRole,
+    };
+  });
+}

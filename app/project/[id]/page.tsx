@@ -43,10 +43,12 @@ export default async function ProjectPage({
     revoked?: string;
     created?: string;
     renamed?: string;
+    tab?: string;
   }>;
 }) {
   const { id } = await params;
-  const { invited, emailed, revoked, created, renamed } = await searchParams;
+  const { invited, emailed, revoked, created, renamed, tab: rawTab } = await searchParams;
+  const tab = rawTab === 'invitations' || rawTab === 'chat' ? rawTab : 'team';
 
   if (!hasDatabase) {
     // Nothing before this route had a concept of a persisted project — there
@@ -214,6 +216,37 @@ export default async function ProjectPage({
           </div>
         )}
 
+
+        {/*
+          Three tabs instead of one long scroll. The page had the seats,
+          the invitations and the conversation stacked, so reading any one
+          of them meant scrolling past the other two. A query param rather
+          than client state, so each tab is a real URL you can link to and
+          none of it needs JavaScript.
+        */}
+        <nav className="mt-7 flex gap-1 border-b border-line">
+          {([
+            ['team', 'Team'],
+            ['invitations', invitations.length ? 'Invitations (' + invitations.length + ')' : 'Invitations'],
+            ['chat', 'Chat'],
+          ] as const).map(([key, label]) => (
+            <Link
+              key={key}
+              href={`/project/${project.id}?tab=${key}`}
+              aria-current={tab === key ? 'page' : undefined}
+              className={`-mb-px border-b-2 px-3 py-2 text-[13px] transition-colors ${
+                tab === key
+                  ? 'border-accent font-medium text-ink'
+                  : 'border-transparent text-muted hover:text-ink'
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+
+        {tab === 'team' && (
+        <>
         <div className="mt-8 grid gap-4 sm:grid-cols-[1fr_260px]">
           <section className="rounded-xl border border-line bg-panel">
             <ul>
@@ -371,13 +404,21 @@ export default async function ProjectPage({
           </aside>
         </div>
 
+        </>
+        )}
+
         {/*
           Who was asked, and what they said. This lived in three places —
           a pending list, a decline map, and the seat rows — which is three
           places to look for one question. One grid of tiles, one answer,
           the status as a chip rather than a sentence.
         */}
-        {invitations.length > 0 && (
+        {tab === 'invitations' && invitations.length === 0 && (
+          <p className="mt-8 rounded-xl border border-dashed border-line bg-panel px-4 py-6 text-[13px] text-faint">
+            Nobody has been invited yet. Open a seat on the Team tab to ask someone.
+          </p>
+        )}
+        {tab === 'invitations' && invitations.length > 0 && (
           <section className="mt-8">
             <h2 className="font-display text-[15px] font-semibold text-ink">Invitations</h2>
             <ul className="mt-3 grid gap-2.5 sm:grid-cols-2">
@@ -463,6 +504,7 @@ export default async function ProjectPage({
           </section>
         )}
 
+        {tab === 'chat' && (
         <section className="mt-8">
           <h2 id="conversation" className="scroll-mt-20 font-display text-[15px] font-semibold text-ink">Conversation</h2>
           {!chatOpen ? (
@@ -524,6 +566,7 @@ export default async function ProjectPage({
             </div>
           )}
         </section>
+        )}
       </div>
     </AppShell>
   );
