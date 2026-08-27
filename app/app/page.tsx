@@ -104,142 +104,92 @@ export default async function AppHome() {
       {/* min-w-0 on the grid child: without it a long project name forces the
           column wider than the viewport and the whole page scrolls sideways,
           which is exactly what was happening. */}
-      <div className="mt-8 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
-        <section className="min-w-0">
-          {/*
-            One list, not two. "Projects" and "Your teams" showed the same
-            project twice and answered nearly the same question; the ones you
-            sit on are marked instead.
-          */}
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-[11px] tracking-wide text-faint uppercase">Projects</h2>
-            <span className="text-[11px] text-faint">{cards.length}</span>
-          </div>
-
-          <ul className="mt-2 grid gap-2.5 sm:grid-cols-2">
-            {cards.map((p) => {
-              const pct = Math.round(p.coverage * 100);
-              return (
-                <li
-                  key={p.id}
-                  className="group relative min-w-0 rounded-xl border border-line bg-panel transition-colors hover:border-line-strong"
-                >
-                  <Link href={`/project/${p.id}`} className="block p-4">
-                    <span className="flex items-start justify-between gap-2">
-                      <span className="min-w-0 truncate text-[13px] font-medium text-ink">
-                        {p.name || 'Untitled project'}
-                      </span>
-                      {p.myRole && (
-                        <span className="shrink-0 rounded-full border border-accent/40 px-1.5 text-[10px] text-accent">
-                          you
-                        </span>
-                      )}
-                    </span>
-
-                    <span className="mt-1 line-clamp-2 block text-[12px] leading-snug text-muted">
-                      {p.brief}
-                    </span>
-
-                    <span className="mt-3 flex items-center gap-2">
-                      {p.members.slice(0, 4).map((m) => (
-                        <Avatar key={m.id} person={m} size={22} />
-                      ))}
-                      {p.filled === 0 && (
-                        <span className="text-[11px] text-faint">Nobody seated yet</span>
-                      )}
-                      <span className="ml-auto shrink-0 text-[11px] tabular-nums text-faint">
-                        {p.filled}/{p.seats}
-                      </span>
-                    </span>
-
-                    <span className="mt-2 block h-1 overflow-hidden rounded-full bg-panel-2">
-                      <span
-                        className="block h-full rounded-full bg-good"
-                        style={{ width: pct + '%' }}
-                      />
-                    </span>
-
-                    <span className="mt-2 flex flex-wrap items-center gap-x-1.5 text-[11px] text-faint">
-                      <span>{pct}% covered</span>
-                      {p.waiting > 0 && <span className="text-accent">· {p.waiting} waiting</span>}
-                      {p.myRole && <span className="truncate">· you are {p.myRole}</span>}
-                    </span>
-                  </Link>
-
-                  <form
-                    action={deleteProjectAction}
-                    className="absolute top-3 right-3 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
-                  >
-                    <input type="hidden" name="projectId" value={p.id} />
-                    <input type="hidden" name="orgSlug" value={org.slug} />
-                    <button
-                      type="submit"
-                      aria-label={'Delete ' + (p.name || 'project')}
-                      className="text-[11px] text-faint transition-colors hover:text-warn"
-                    >
-                      Delete
-                    </button>
-                  </form>
-                </li>
-              );
-            })}
-
-            <li className="min-w-0">
-              <Link
-                href={`/app/org/${org.slug}/new`}
-                className="flex h-full min-h-[140px] items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong p-4 text-[13px] text-muted transition-colors hover:border-accent hover:text-accent"
-              >
-                <span aria-hidden className="text-[18px] leading-none">+</span>
-                New project
-              </Link>
-            </li>
-          </ul>
-        </section>
-
-        <aside className="space-y-4">
-          {me && (
-            <Link
-              href={`/app/org/${org.slug}/people/${me.id}`}
-              className="block rounded-xl border border-line bg-panel p-4 transition-colors hover:border-line-strong"
+      {/*
+        Big tiles and a plus. Nothing else lives here: the workspace is
+        where projects are, and anything that is not a project is a
+        distraction from choosing one.
+      */}
+      <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {cards.map((p) => {
+          const pct = Math.round(p.coverage * 100);
+          const open = p.seats - p.filled;
+          return (
+            <li
+              key={p.id}
+              className="group relative min-w-0 rounded-2xl border border-line bg-panel transition-colors hover:border-line-strong"
             >
-              <span className="flex items-center gap-3">
-                <Avatar person={me} size={40} />
-                <span className="min-w-0">
-                  <span className="block truncate text-[13px] font-medium text-ink">{me.name}</span>
-                  <span className="block truncate text-[12px] text-muted">
-                    {me.title || 'No title yet'}
+              <Link href={`/project/${p.id}`} className="block p-5">
+                <span className="flex items-start justify-between gap-2">
+                  <span className="min-w-0 truncate font-display text-[15px] font-semibold text-ink">
+                    {p.name || 'Untitled project'}
+                  </span>
+                  {p.myRole && (
+                    <span className="shrink-0 rounded-full border border-accent/40 px-1.5 text-[10px] text-accent">
+                      you
+                    </span>
+                  )}
+                </span>
+
+                <span className="mt-1.5 line-clamp-2 block text-[12px] leading-snug text-muted">
+                  {p.brief}
+                </span>
+
+                <span className="mt-4 flex items-center gap-1.5">
+                  {p.members.slice(0, 5).map((m) => (
+                    <Avatar key={m.id} person={m} size={26} />
+                  ))}
+                  {p.filled === 0 && (
+                    <span className="text-[11px] text-faint">Nobody seated yet</span>
+                  )}
+                  <span className="ml-auto shrink-0 text-[11px] tabular-nums text-faint">
+                    {p.filled}/{p.seats}
                   </span>
                 </span>
-              </span>
-              <span className="mt-3 block text-[11px] text-faint">
-                {me.skills.length} skill{me.skills.length === 1 ? '' : 's'} &middot;{' '}
-                {me.hoursPerWeek} hrs/wk free
-              </span>
-            </Link>
-          )}
 
-          <section className="rounded-xl border border-line bg-panel p-4">
-            <h2 className="text-[11px] tracking-wide text-faint uppercase">{org.name}</h2>
-            <p className="mt-2 text-[13px] text-ink">
-              {cards.length} project{cards.length === 1 ? '' : 's'}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Link
-                href={`/app/org/${org.slug}`}
-                className="rounded-lg border border-line px-2.5 py-1 text-[12px] text-muted transition-colors hover:border-line-strong hover:text-ink"
-              >
-                Roster
+                <span className="mt-2.5 block h-1 overflow-hidden rounded-full bg-panel-2">
+                  <span
+                    className="block h-full rounded-full bg-good"
+                    style={{ width: pct + '%' }}
+                  />
+                </span>
+
+                <span className="mt-2 flex flex-wrap items-center gap-x-1.5 text-[11px] text-faint">
+                  <span>{pct}% covered</span>
+                  {open > 0 && <span>· {open} open</span>}
+                  {p.waiting > 0 && <span className="text-accent">· {p.waiting} waiting</span>}
+                </span>
               </Link>
-              <Link
-                href={`/app/org/${org.slug}/import`}
-                className="rounded-lg border border-line px-2.5 py-1 text-[12px] text-muted transition-colors hover:border-line-strong hover:text-ink"
+
+              <form
+                action={deleteProjectAction}
+                className="absolute top-4 right-4 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
               >
-                Import people
-              </Link>
-            </div>
-          </section>
-        </aside>
-      </div>
+                <input type="hidden" name="projectId" value={p.id} />
+                <input type="hidden" name="orgSlug" value={org.slug} />
+                <button
+                  type="submit"
+                  aria-label={'Delete ' + (p.name || 'project')}
+                  className="text-[11px] text-faint transition-colors hover:text-warn"
+                >
+                  Delete
+                </button>
+              </form>
+            </li>
+          );
+        })}
+
+        <li className="min-w-0">
+          <Link
+            href="/"
+            className="flex h-full min-h-[180px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-line-strong p-5 text-muted transition-colors hover:border-accent hover:text-accent"
+          >
+            <span aria-hidden className="text-[26px] leading-none">+</span>
+            <span className="text-[13px] font-medium">New project</span>
+            <span className="text-[11px] text-faint">Start from a brief</span>
+          </Link>
+        </li>
+      </ul>
+
     </AppShell>
   );
 }
