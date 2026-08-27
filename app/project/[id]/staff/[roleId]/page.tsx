@@ -7,6 +7,7 @@ import { getProject } from '@/lib/data/projects';
 import { listPeople } from '@/lib/data/people';
 import { SEAT_FLOOR, rankCandidates, type Candidate } from '@/lib/engine/assemble';
 import { labelOf } from '@/lib/engine/graph';
+import { coveringProvenance } from '@/lib/engine/score';
 
 import { fillSeatAction, inviteAction } from './actions';
 
@@ -150,7 +151,10 @@ export default async function StaffSeatPage({
 
         <p className="mt-5 text-[12px] text-muted">
           Among people who can hold this seat, ranked by what they add to the team as it already
-          stands — not by how strong they look on their own.
+          stands — not by how strong they look on their own. A{' '}
+          <span className="text-faint">self-reported</span> tag means the engine has already
+          discounted that person&rsquo;s levels: an endorsed or verified skill counts for more than
+          one someone typed about themselves.
         </p>
 
         <section className="mt-4 rounded-xl border border-line bg-panel">
@@ -166,6 +170,7 @@ export default async function StaffSeatPage({
                   candidate={c}
                   isSeated={c.person.id === seatedId}
                   hasDeclined={declinedIds.has(c.person.id)}
+                  trust={coveringProvenance(c.person, role.requirements)}
                   projectId={project.id}
                   roleId={role.id}
                   readOnly={readOnly}
@@ -190,6 +195,7 @@ export default async function StaffSeatPage({
                     candidate={c}
                     isSeated={c.person.id === seatedId}
                     hasDeclined={declinedIds.has(c.person.id)}
+                    trust={coveringProvenance(c.person, role.requirements)}
                     projectId={project.id}
                     roleId={role.id}
                     readOnly={readOnly}
@@ -215,10 +221,20 @@ export default async function StaffSeatPage({
  * contribution hides the whole point of the product, and contribution without
  * fit is what let a designer top the ranking for a backend seat.
  */
+type Trust = ReturnType<typeof coveringProvenance>;
+
+const TRUST_TAG: Partial<Record<Trust, { label: string; className: string }>> = {
+  verified: { label: 'verified', className: 'border-good/40 text-good' },
+  endorsed: { label: 'endorsed', className: 'border-accent/40 text-accent' },
+  extracted: { label: 'from résumé', className: 'border-line text-faint' },
+  self: { label: 'self-reported', className: 'border-line text-faint' },
+};
+
 function CandidateRow({
   candidate,
   isSeated,
   hasDeclined,
+  trust,
   projectId,
   roleId,
   readOnly,
@@ -226,18 +242,27 @@ function CandidateRow({
   candidate: Candidate;
   isSeated: boolean;
   hasDeclined: boolean;
+  trust: Trust;
   projectId: string;
   roleId: string;
   readOnly: boolean;
 }) {
   const fit = Math.round(candidate.roleMatch * 100);
   const contribution = Math.round(candidate.breakdown.gapFill * 100);
+  const tag = TRUST_TAG[trust];
 
   return (
     <li className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-b-0">
       <Avatar person={candidate.person} size={32} />
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-medium">{candidate.person.name}</p>
+        <p className="flex items-center gap-1.5 text-[13px] font-medium">
+          {candidate.person.name}
+          {tag && (
+            <span className={`rounded-full border px-1.5 py-0 text-[10px] font-normal ${tag.className}`}>
+              {tag.label}
+            </span>
+          )}
+        </p>
         <p className="truncate text-[12px] text-muted">
           {candidate.person.title || 'No title yet'} &middot; {candidate.person.hoursPerWeek} hrs/wk
         </p>

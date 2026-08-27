@@ -15,6 +15,7 @@ import { teamHealth } from '../lib/engine/health';
 import {
   allRequirements,
   coverage,
+  coveringProvenance,
   marginalGain,
   satisfaction,
   skillTrust,
@@ -107,6 +108,43 @@ check(
     { ...pool[0], skills: [{ skillId: 'react', level: 5, provenance: 'self' }] },
     { skillId: 'react', minLevel: 3, weight: 1 },
   ) === 1,
+);
+
+const twoReqs = [
+  { skillId: 'react', minLevel: 3, weight: 1 },
+  { skillId: 'postgres', minLevel: 3, weight: 1 },
+];
+check(
+  'covering provenance reports the weakest contributing skill',
+  coveringProvenance(
+    { ...pool[0], skills: [
+      { skillId: 'react', level: 5, provenance: 'verified' },
+      { skillId: 'postgres', level: 4, provenance: 'self' },
+    ] },
+    twoReqs,
+  ) === 'self',
+);
+check(
+  'a skill that contributes nothing does not drag the label down',
+  coveringProvenance(
+    { ...pool[0], skills: [
+      { skillId: 'react', level: 5, provenance: 'endorsed' },
+      { skillId: 'figma', level: 5, provenance: 'self' },
+    ] },
+    [{ skillId: 'react', minLevel: 3, weight: 1 }],
+  ) === 'endorsed',
+);
+check(
+  'the seeded pool reads as unknown provenance, not self',
+  coveringProvenance({ ...pool[0], skills: [{ skillId: 'react', level: 5 }] }, [
+    { skillId: 'react', minLevel: 3, weight: 1 },
+  ]) === 'unknown',
+);
+check(
+  'nothing contributing reads as none',
+  coveringProvenance({ ...pool[0], skills: [{ skillId: 'figma', level: 5, provenance: 'self' }] }, [
+    { skillId: 'react', minLevel: 3, weight: 1 },
+  ]) === 'none',
 );
 
 // --------------------------------------------------------------------- coverage

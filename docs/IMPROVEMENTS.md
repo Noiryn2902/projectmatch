@@ -612,10 +612,23 @@ preview say so in as many words. 12 new parser assertions (`test:import` now 34)
 `person_skills` already had `provenance` and `source`.
 
 **Not verified live** — needs an admin to paste a roster with skills and confirm the `person_skills`
-rows land and the people then appear in a ranking (discounted). **Still open in Phase 3:** resume /
-GitHub import as an AI action, recency, endorsements, and any interface marker on a candidate row
-showing *which* of their covering skills are unverified (the import page explains the idea, the
-ranking pages do not surface it per-person yet).
+rows land and the people then appear in a ranking (discounted).
+
+**Done (2026-08-27) — the ranking says which trust it is looking at.** `coveringProvenance(person,
+reqs)` in `lib/engine/score.ts` reduces the provenances of the skills a person actually brings to a
+set of requirements down to their *weakest link* — `'unknown'` when the covering skills carry no
+provenance (the seeded pool), `'none'` when nothing contributes. The staffing page
+(`/project/[id]/staff/[roleId]`) tags each candidate with it: `verified` / `endorsed` in colour,
+`self-reported` / `from résumé` muted, nothing at all for the seeded pool. A line under the ranking
+explains that a `self-reported` tag means the score has already been discounted. 4 engine
+assertions (suite now 61). Pure, UI-only, no migration. This is the "and the interface says so"
+half of the trust work — it makes slice 11's discount, otherwise invisible, legible on the page
+where the pitch lives.
+
+**Still open in Phase 3:** resume / GitHub import as an AI action, recency, endorsements
+(`endorsements` table + RLS already exist in `0001`, but the engine reads `person_skills.provenance`
+not the endorsement rows, and the org owner has no `people` row to endorse *from* yet — that ties
+into claim-your-profile), and a per-*skill* breakdown rather than the single weakest-link tag.
 
 ### Phase 3.5 — The engine phase
 

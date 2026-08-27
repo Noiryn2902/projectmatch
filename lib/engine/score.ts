@@ -25,6 +25,30 @@ export function skillTrust(ps: PersonSkill): number {
   return ps.provenance ? PROVENANCE_TRUST[ps.provenance] : 1;
 }
 
+/** Weakest to strongest, for reducing a set of provenances to its weakest link. */
+const TRUST_ORDER: SkillProvenance[] = ['self', 'extracted', 'endorsed', 'verified'];
+
+/**
+ * The weakest provenance among the skills this person actually brings to a
+ * set of requirements — the honest thing to show beside a score the engine
+ * has already discounted. `'unknown'` when the covering skills carry no
+ * provenance at all (the seeded pool, which the engine trusts whole);
+ * `'none'` when nothing the person has contributes.
+ */
+export function coveringProvenance(
+  person: Person,
+  reqs: Requirement[],
+): SkillProvenance | 'unknown' | 'none' {
+  const provs: (SkillProvenance | 'unknown')[] = [];
+  for (const ps of person.skills) {
+    if (reqs.some((r) => sim(ps.skillId, r.skillId) > 0)) provs.push(ps.provenance ?? 'unknown');
+  }
+  if (provs.length === 0) return 'none';
+  const known = provs.filter((p): p is SkillProvenance => p !== 'unknown');
+  if (known.length === 0) return 'unknown';
+  return known.reduce((w, p) => (TRUST_ORDER.indexOf(p) < TRUST_ORDER.indexOf(w) ? p : w));
+}
+
 /** How well one person satisfies one requirement, 0..1. */
 export function satisfaction(person: Person, req: Requirement): number {
   let best = 0;
