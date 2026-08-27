@@ -10,6 +10,7 @@ import {
   getPersonSkillDetail,
 } from '@/lib/data/people';
 import { labelOf } from '@/lib/engine/graph';
+import { ACCEPTED } from '@/lib/skills/read-document';
 import type { SkillProvenance } from '@/lib/types';
 
 import { addResumeSkillsAction, claimAction, endorseAction } from './actions';
@@ -39,6 +40,7 @@ export default async function PersonPage({
     claimed?: string;
     claim_error?: string;
     need_profile?: string;
+    file_error?: string;
     welcome?: string;
     read?: string;
     by?: string;
@@ -135,6 +137,7 @@ export default async function PersonPage({
           </Banner>
         )}
         {sp.denied && <Banner tone="warn">Editing the roster is limited to organisation admins.</Banner>}
+        {sp.file_error && <Banner tone="warn">{sp.file_error}</Banner>}
 
         {canClaim && (
           <form action={claimAction} className="mt-6">
@@ -217,7 +220,7 @@ export default async function PersonPage({
           <section className="mt-8 rounded-xl border border-line bg-panel p-4">
             <h2 className="text-[13px] font-medium">Add skills from a résumé</h2>
             <p className="mt-1 text-[12px] text-muted">
-              Paste the text. Recognised skills are added as{' '}
+              Upload a PDF or Word file, or paste the text. Recognised skills are added as{' '}
               <span className="text-faint">from résumé</span> — the engine weights them below an
               endorsed or verified level. Skills already on file are left untouched.
             </p>
@@ -225,11 +228,17 @@ export default async function PersonPage({
               <input type="hidden" name="orgId" value={org.id} />
               <input type="hidden" name="slug" value={slug} />
               <input type="hidden" name="personId" value={person.id} />
+              <input
+                name="file"
+                type="file"
+                accept={ACCEPTED}
+                aria-label="Résumé file"
+                className="mb-3 block w-full text-[11px] text-muted file:mr-3 file:rounded-full file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-[11px] file:font-medium file:text-panel hover:file:opacity-90"
+              />
               <textarea
                 name="resume"
-                required
-                rows={7}
-                placeholder="Paste résumé or bio text…"
+                rows={6}
+                placeholder="…or paste résumé / bio text here"
                 aria-label="Résumé text"
                 className="w-full resize-y rounded-xl border border-line bg-canvas px-4 py-3 text-[12px] outline-none transition-colors focus:border-accent"
               />

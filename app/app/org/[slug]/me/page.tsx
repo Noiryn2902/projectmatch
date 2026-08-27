@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 
 import { getOrgBySlug } from '@/lib/data/orgs';
 import { getMyPersonId } from '@/lib/data/people';
+import { ACCEPTED } from '@/lib/skills/read-document';
 import { getCurrentUser } from '@/lib/supabase/server';
 
 import { createMyProfileAction } from './actions';
@@ -26,8 +27,15 @@ PostgreSQL and Redis. Comfortable with Docker and CI. Some exposure to NLP.`;
  * against the same 82-skill vocabulary the rest of the product uses, and
  * anything unrecognised is dropped rather than guessed at.
  */
-export default async function MyProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function MyProfilePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ file_error?: string }>;
+}) {
   const { slug } = await params;
+  const { file_error: fileError } = await searchParams;
 
   const user = await getCurrentUser();
   if (!user) redirect(`/auth/sign-in?next=/app/org/${slug}/me`);
@@ -65,6 +73,12 @@ export default async function MyProfilePage({ params }: { params: Promise<{ slug
           Signed in as {user.email}. An account proves who you are — this is the profile teams get
           matched against. Without it you appear in no ranking and cannot endorse anyone.
         </p>
+
+        {fileError && (
+          <div className="mt-6 rounded-xl border border-line border-l-2 border-l-warn bg-panel px-4 py-3 text-[13px] text-ink">
+            {fileError} Your details were not saved — fill them in again below.
+          </div>
+        )}
 
         <form action={createMyProfileAction} className="mt-7 space-y-4">
           <input type="hidden" name="orgId" value={org.id} />
@@ -126,21 +140,48 @@ export default async function MyProfilePage({ params }: { params: Promise<{ slug
           </div>
 
           <div className="rounded-xl border border-line border-l-2 border-l-accent bg-panel p-4">
-            <label htmlFor="resume" className="block text-[13px] font-medium text-ink">
-              Your skills, the fast way
-            </label>
+            <p className="text-[13px] font-medium text-ink">Your skills, the fast way</p>
             <p className="mt-1 text-[12px] text-muted">
-              Paste your résumé or LinkedIn summary and Gemini reads the skills out of it, instead
-              of asking you to tick eighty boxes. It can only answer with skills from our
-              82-skill vocabulary and every answer is checked against it again — nothing is
-              invented, and nothing is scraped from anywhere.
+              Upload your résumé and Gemini reads the skills out of it, instead of asking you to
+              tick eighty boxes. It can only answer with skills from our 82-skill vocabulary and
+              every answer is checked against it again — nothing is invented.
             </p>
+
+            <label
+              htmlFor="file"
+              className="mt-3 block cursor-pointer rounded-lg border border-dashed border-line-strong bg-canvas px-4 py-5 text-center transition-colors hover:border-accent"
+            >
+              <span className="block text-[13px] font-medium text-ink">
+                Upload a PDF, Word file, or text file
+              </span>
+              <span className="mt-1 block text-[11px] text-faint">
+                Bringing your LinkedIn? Open your profile, hit <em>More → Save to PDF</em>, and drop
+                that here. It is your own export — we never scrape anyone&rsquo;s profile.
+              </span>
+              <input
+                id="file"
+                name="file"
+                type="file"
+                accept={ACCEPTED}
+                className="mt-3 block w-full text-[11px] text-muted file:mr-3 file:rounded-full file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-[11px] file:font-medium file:text-panel hover:file:opacity-90"
+              />
+            </label>
+
+            <div className="my-3 flex items-center gap-3 text-[11px] tracking-wide text-faint uppercase">
+              <span className="h-px flex-1 bg-line" />
+              or paste it
+              <span className="h-px flex-1 bg-line" />
+            </div>
+
+            <label htmlFor="resume" className="sr-only">
+              Résumé text
+            </label>
             <textarea
               id="resume"
               name="resume"
-              rows={7}
+              rows={6}
               placeholder={PLACEHOLDER}
-              className="mt-3 w-full resize-y rounded-lg border border-line bg-canvas px-3.5 py-3 text-[12px] outline-none transition-colors focus:border-accent"
+              className="w-full resize-y rounded-lg border border-line bg-canvas px-3.5 py-3 text-[12px] outline-none transition-colors focus:border-accent"
             />
             <p className="mt-2 text-[11px] text-faint">
               These land as <span className="text-muted">from résumé</span>. The engine weights them

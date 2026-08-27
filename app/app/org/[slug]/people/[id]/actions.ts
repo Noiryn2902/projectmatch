@@ -12,26 +12,41 @@ import {
   removeEndorsement,
 } from '@/lib/data/people';
 import { extractSkillsSmart } from '@/lib/skills/ai-extract';
+import { DocumentError, readDocument } from '@/lib/skills/read-document';
 
 const REVALIDATE = '/app/org/[slug]/people/[id]';
 
 /**
- * Reads skills out of a pasted résumé and adds the new ones to a person, as
- * `extracted` provenance. Deterministic — no API key — matching the promise
- * the rest of the product makes. The text is parsed here, on the server;
- * nothing about it is trusted from the client but the raw paste.
+ * Reads skills out of an uploaded or pasted résumé and adds the new ones to
+ * a person, as `extracted` provenance. A file wins over the textarea when
+ * both are present. Everything happens on the server; nothing is trusted
+ * from the client but the bytes and the raw paste.
  */
 export async function addResumeSkillsAction(formData: FormData) {
   const orgId = String(formData.get('orgId') ?? '');
   const slug = String(formData.get('slug') ?? '');
   const personId = String(formData.get('personId') ?? '');
-  const resume = String(formData.get('resume') ?? '');
-  if (!orgId || !slug || !personId || !resume.trim()) return;
+  if (!orgId || !slug || !personId) return;
 
   const role = await getMyRole(orgId);
   if (role !== 'owner' && role !== 'admin') {
     redirect(`/app/org/${slug}/people/${personId}?denied=1`);
   }
+
+  let resume = String(formData.get('resume') ?? '');
+  const upload = formData.get('file');
+  if (upload instanceof File && upload.size > 0) {
+    try {
+      resume = await readDocument(upload);
+    } catch (err) {
+      const message = err instanceof DocumentError ? err.message : 'That file could not be read.';
+      redirect(
+        `/app/org/${slug}/people/${personId}?file_error=${encodeURIComponent(message)}`,
+      );
+    }
+  }
+
+  if (!resume.trim()) return;
 
   const read = await extractSkillsSmart(resume);
   const added = await addExtractedSkills(personId, read.skills);
