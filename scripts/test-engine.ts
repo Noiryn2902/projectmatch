@@ -7,10 +7,11 @@
  *
  *   npx tsx scripts/test-engine.ts
  */
-import type { Brief, Person } from '../lib/types';
+import type { Brief, Person, Role } from '../lib/types';
 import peopleData from '../lib/seed/people.json';
 import { fallbackBrief } from '../lib/ai/fallback';
 import { autoFill, membersOf, rankCandidates } from '../lib/engine/assemble';
+import { diagnoseRole } from '../lib/engine/feasibility';
 import { teamHealth } from '../lib/engine/health';
 import {
   allRequirements,
@@ -329,6 +330,61 @@ check('a one-person team is not flagged for key-person risk', (() => {
   const solo = teamHealth(bfBrief, [alice], 1);
   return !solo.gaps.some((g) => g.label.startsWith('Only '));
 })());
+
+// ---------------------------------------------------------- infeasibility
+
+group('Infeasibility: say why, and what is cheapest to change');
+
+const dataRole: Role = {
+  id: 'data',
+  title: 'Data',
+  hoursNeeded: 10,
+  requirements: [
+    { skillId: 'airflow', minLevel: 5, weight: 3 },
+    { skillId: 'dbt', minLevel: 4, weight: 3 },
+    { skillId: 'etl', minLevel: 3, weight: 3 },
+  ],
+};
+const fe: Person = { ...pool[0], id: 'fe', name: 'Fee', openToProjects: true, skills: [
+  { skillId: 'react', level: 5 },
+  { skillId: 'css', level: 5 },
+] };
+const partial: Person = { ...pool[1], id: 'pt', name: 'Pat', openToProjects: true, skills: [
+  { skillId: 'airflow', level: 2 },
+  { skillId: 'etl', level: 4 },
+] };
+
+const noHope = diagnoseRole([fe], dataRole);
+check('a role nobody can hold is reported unstaffable', noHope.staffable === false);
+check('every unmet requirement is a real one from the role', noHope.unmet.every((u) => dataRole.requirements.some((r) => r.skillId === u.skillId)));
+check('with nobody near, every requirement is unmet', noHope.unmet.length === 3);
+check('a true blank has no closest person', noHope.unmet.every((u) => u.closest === null));
+
+const someHope = diagnoseRole([fe, partial], dataRole);
+check(
+  'a requirement a partial holder half-covers is still unmet, and names them',
+  (() => {
+    const af = someHope.unmet.find((u) => u.skillId === 'airflow');
+    return af?.closest?.name === 'Pat' && af.closest.level === 2;
+  })(),
+);
+check('a requirement someone fully meets drops off the unmet list', !someHope.unmet.some((u) => u.skillId === 'etl'));
+check('unmet requirements are ordered hardest first', (() => {
+  const b = someHope.unmet.map((u) => u.best);
+  return b.every((v, i) => i === 0 || b[i - 1] <= v);
+})());
+check(
+  'a fully staffable role reports nothing unmet',
+  (() => {
+    const strong: Person = { ...fe, skills: [
+      { skillId: 'airflow', level: 5 },
+      { skillId: 'dbt', level: 5 },
+      { skillId: 'etl', level: 5 },
+    ] };
+    const d = diagnoseRole([strong], dataRole);
+    return d.staffable && d.unmet.length === 0;
+  })(),
+);
 
 // -------------------------------------------------------------- brief reading
 

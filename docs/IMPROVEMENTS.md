@@ -284,12 +284,19 @@ but payments rests on one person" versus "two weeks slower, no key-person risk".
 
 It changes the product's posture from oracle to advisor, which is both more honest and more useful.
 
-### 6.4 Infeasibility diagnosis **[Proposed]**
+### 6.4 Infeasibility diagnosis **[Done — 2026-08-27]**
 
-When a brief cannot be staffed, the product simply fails. A real optimiser says *why*, and what is
-cheapest to change: *"not staffable this quarter — hire one senior backend, or extend three weeks,
-or drop the ML requirement."* Runs on coverage math that already exists. The smartest-looking
-feature in the product for the least new machinery.
+The staffing page used to dead-end at "Nobody on the roster can credibly hold this seat yet."
+`diagnoseRole(pool, role)` in `lib/engine/feasibility.ts` now turns that into a diagnosis: which
+requirements are the problem, whether anyone is close, and by how much. For each requirement the
+role needs, it finds the best single-person satisfaction on the roster; anything under the coverage
+line (0.5) is `unmet`, carrying the nearest person and their level in the skill *most similar* to
+the requirement (not the highest level among loosely related skills), or `null` for a true blank.
+
+The page renders it above the empty ranking: *"Airflow — Pat is closest, 3 levels short of the 5
+this seat needs"* / *"Terraform — nobody on the roster has it or anything close"*, then the three
+cheapest fixes spelled out — hire for the named skills, lower the level bar, or drop a requirement.
+Pure engine on maths that already existed. 8 new assertions (engine suite 77), no migration.
 
 ### 6.5 Skill trust: provenance **and** recency **[Committed — Phase 3]**
 

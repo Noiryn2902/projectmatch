@@ -6,6 +6,7 @@ import { getDemoOrg } from '@/lib/data/orgs';
 import { getProject } from '@/lib/data/projects';
 import { listPeople } from '@/lib/data/people';
 import { SEAT_FLOOR, rankCandidates, type Candidate } from '@/lib/engine/assemble';
+import { diagnoseRole } from '@/lib/engine/feasibility';
 import { labelOf } from '@/lib/engine/graph';
 import { coveringProvenance } from '@/lib/engine/score';
 
@@ -157,6 +158,8 @@ export default async function StaffSeatPage({
           one someone typed about themselves.
         </p>
 
+        {qualified.length === 0 && <Infeasibility diagnosis={diagnoseRole(available, role)} />}
+
         <section className="mt-4 rounded-xl border border-line bg-panel">
           {qualified.length === 0 ? (
             <p className="p-4 text-[13px] text-faint italic">
@@ -213,6 +216,41 @@ export default async function StaffSeatPage({
         </p>
       </div>
     </main>
+  );
+}
+
+/**
+ * When the seat cannot be filled from the roster, say what is actually
+ * missing and what is cheapest to change — rather than a dead end.
+ */
+function Infeasibility({ diagnosis }: { diagnosis: ReturnType<typeof diagnoseRole> }) {
+  const { unmet } = diagnosis;
+  if (unmet.length === 0) return null;
+
+  return (
+    <div className="mt-4 rounded-xl border border-line border-l-2 border-l-warn bg-panel px-4 py-3.5">
+      <p className="text-[13px] font-medium text-ink">
+        This seat cannot be filled from the roster as it stands.
+      </p>
+      <ul className="mt-2 space-y-1">
+        {unmet.map((u) => {
+          const short = u.closest ? Math.max(1, u.minLevel - u.closest.level) : 0;
+          return (
+            <li key={u.skillId} className="text-[12px] text-muted">
+              <span className="text-ink">{u.label}</span>{' '}
+              {u.closest
+                ? `— ${u.closest.name} is closest, ${short} level${short === 1 ? '' : 's'} short of the ${u.minLevel} this seat needs`
+                : '— nobody on the roster has it or anything close'}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-2.5 text-[11px] text-faint">
+        Cheapest fixes: bring someone in with{' '}
+        {unmet.map((u) => u.label).join(', ')}; lower the level bar on this role; or drop a
+        requirement the project can do without.
+      </p>
+    </div>
   );
 }
 
