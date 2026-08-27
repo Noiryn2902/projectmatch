@@ -65,6 +65,20 @@ export function satisfaction(person: Person, req: Requirement): number {
   return best;
 }
 
+/**
+ * How many members individually clear the bar on a requirement.
+ *
+ * `coverage()` only asks whether *someone* covers each requirement — it takes
+ * the max. This asks how many, which is the difference between a team that
+ * survives one person leaving and one that does not. One person covering
+ * Kubernetes and three covering it score identically until you count them.
+ */
+export function coveringCount(members: Person[], req: Requirement, bar = 0.5): number {
+  let n = 0;
+  for (const m of members) if (satisfaction(m, req) >= bar) n++;
+  return n;
+}
+
 /** Weighted share of requirements a group of people covers, 0..1. */
 export function coverage(reqs: Requirement[], members: Person[]): number {
   let num = 0;

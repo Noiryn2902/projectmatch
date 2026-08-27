@@ -120,6 +120,12 @@ export interface TeamHealth {
   filled: number;
   seats: number;
   overlapHours: number;
+  /**
+   * The fewest people covering any one weighted requirement the team does
+   * cover — how many could leave before a requirement goes uncovered. 1 is a
+   * single point of failure; 0 means nothing weighted is covered yet.
+   */
+  busFactor: number;
   gaps: Gap[];
 }
 

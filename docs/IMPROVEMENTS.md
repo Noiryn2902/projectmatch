@@ -259,14 +259,23 @@ Modelling it unlocks **conflict detection** — *"this team is only possible if 
 Atlas."* That is not a feature, that is the job the tool exists to do. Nothing else on this list
 changes the product's usefulness as much.
 
-### 6.2 `coverage()` is blind to key-person risk **[Proposed, cheapest win]**
+### 6.2 `coverage()` is blind to key-person risk **[Done — 2026-08-27]**
 
-`score.ts:22` takes the **max** satisfaction across members. One person covering Kubernetes and
-three people covering it produce an identical number — so a team with a single point of failure
-currently scores as perfectly healthy.
+`coverage()` takes the **max** satisfaction across members, so one person covering Kubernetes and
+three covering it scored identically — a single point of failure read as perfectly healthy.
 
-Counting how many members clear each requirement is a few lines and yields **bus factor**, which
-real organisations genuinely fear and no competitor will show.
+`coveringCount(members, req, bar)` in `lib/engine/score.ts` counts how many members individually
+clear a requirement. `teamHealth()` now uses it two ways:
+
+- **`busFactor`** on `TeamHealth` — the fewest people covering any one weighted requirement the
+  team *does* cover. `1` is a single point of failure; `0` means nothing weighted is covered yet.
+  Shown on the project page's health card, in warn colour when it is 1.
+- A **key-person gap** — `"Only <name> covers <skill>"` — for any weighted requirement (weight ≥ 2)
+  the team covers through exactly one person. Ranked directly below the "no coverage" gaps
+  (an unfillable hole is worse than a fragile one) and above the softer team-shape warnings. Only
+  fires with two or more members, since a solo team is trivially bus-factor 1 everywhere.
+
+Pure engine, no migration. 8 new assertions (engine suite 69). Nothing competitors show.
 
 ### 6.3 One answer, where real decisions need options **[Proposed]**
 

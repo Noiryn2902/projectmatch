@@ -229,6 +229,20 @@ export default async function ProjectPage({
                 {health.filled} of {health.seats} seats filled &middot; {health.overlapHours} hrs/wk
                 overlap
               </p>
+              {health.filled >= 2 && (
+                <p
+                  className={`mt-1 text-[11px] ${
+                    health.busFactor === 1 ? 'text-warn' : 'text-faint'
+                  }`}
+                >
+                  Bus factor {health.busFactor}
+                  {health.busFactor === 1
+                    ? ' — one departure leaves a requirement uncovered'
+                    : health.busFactor >= 2
+                      ? ' — every covered requirement has backup'
+                      : ''}
+                </p>
+              )}
             </section>
 
             <section className="rounded-xl border border-line border-l-2 border-l-accent bg-panel px-4 py-3.5">

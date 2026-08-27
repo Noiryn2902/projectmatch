@@ -15,6 +15,7 @@ import { teamHealth } from '../lib/engine/health';
 import {
   allRequirements,
   coverage,
+  coveringCount,
   coveringProvenance,
   marginalGain,
   satisfaction,
@@ -269,9 +270,65 @@ group('Team health');
 check('coverage is reported within 0..1', health.coverage >= 0 && health.coverage <= 1);
 check('a full team does not claim a perfect score', health.coverage < 1, 'an adjacent skill must never read as full cover');
 check('filled count matches the roster', health.filled === members.length);
-check('gaps are capped so the panel stays readable', health.gaps.length <= 4);
+check('gaps are capped so the panel stays readable', health.gaps.length <= 5);
 check('every gap names something real', health.gaps.every((g) => g.label.length > 0));
 check('an empty team reports no coverage', teamHealth(brief, [], brief.roles.length).coverage === 0);
+
+// ---------------------------------------------------------------- bus factor
+
+group('Bus factor: covered is not the same as safe');
+
+const bfBrief: Brief = {
+  text: 'x',
+  durationWeeks: 4,
+  domain: [],
+  roles: [
+    {
+      id: 'r1',
+      title: 'A',
+      hoursNeeded: 10,
+      requirements: [
+        { skillId: 'react', minLevel: 3, weight: 3 },
+        { skillId: 'postgres', minLevel: 3, weight: 3 },
+      ],
+    },
+  ],
+};
+const alice: Person = { ...pool[0], id: 'a', name: 'Alice', skills: [
+  { skillId: 'react', level: 5 },
+  { skillId: 'postgres', level: 5 },
+] };
+const bobReactOnly: Person = { ...pool[1], id: 'b', name: 'Bob', skills: [{ skillId: 'react', level: 5 }] };
+const bobBoth: Person = { ...bobReactOnly, skills: [
+  { skillId: 'react', level: 5 },
+  { skillId: 'postgres', level: 4 },
+] };
+
+const reactReq = { skillId: 'react', minLevel: 3, weight: 3 };
+const pgReq = { skillId: 'postgres', minLevel: 3, weight: 3 };
+
+check('coveringCount counts every member who clears the bar', coveringCount([alice, bobReactOnly], reactReq) === 2);
+check('coveringCount sees a sole holder', coveringCount([alice, bobReactOnly], pgReq) === 1);
+
+const fragile = teamHealth(bfBrief, [alice, bobReactOnly], 1);
+check('a sole-holder requirement drops the bus factor to 1', fragile.busFactor === 1);
+check(
+  'the sole holder is named as a gap',
+  fragile.gaps.some((g) => g.label === 'Only Alice covers PostgreSQL'),
+);
+
+const safe = teamHealth(bfBrief, [alice, bobBoth], 1);
+check('two people on every requirement lifts the bus factor to 2', safe.busFactor === 2);
+check(
+  'no key-person gap when everything has backup',
+  !safe.gaps.some((g) => g.label.startsWith('Only ')),
+);
+
+check('an empty team has bus factor 0', teamHealth(bfBrief, [], 1).busFactor === 0);
+check('a one-person team is not flagged for key-person risk', (() => {
+  const solo = teamHealth(bfBrief, [alice], 1);
+  return !solo.gaps.some((g) => g.label.startsWith('Only '));
+})());
 
 // -------------------------------------------------------------- brief reading
 
