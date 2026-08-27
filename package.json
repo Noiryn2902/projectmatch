@@ -13,9 +13,10 @@
     "test:email": "tsx scripts/test-email.ts",
     "test:extract": "tsx scripts/test-extract.ts",
     "test:capacity": "tsx scripts/test-capacity.ts",
+    "test:ratelimit": "tsx scripts/test-ratelimit.ts",
     "bench": "tsx scripts/bench-engine.ts",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm run lint && npm run test && npm run test:import && npm run test:email && npm run test:extract && npm run test:capacity && npm run build",
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run test:import && npm run test:email && npm run test:extract && npm run test:capacity && npm run test:ratelimit && npm run build",
     "db:seed": "node scripts/migrate-seed.mjs"
   },
   "dependencies": {

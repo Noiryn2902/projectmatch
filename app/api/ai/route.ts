@@ -3,8 +3,18 @@ import type { Requirement, Role } from '@/lib/types';
 import { SKILLS, resolveSkill } from '@/lib/engine/graph';
 import { fallbackBrief, fallbackReason } from '@/lib/ai/fallback';
 import { generateJson } from '@/lib/ai/client';
+import { clientKey, rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
+
+/**
+ * This route spends money on someone else's model on behalf of anyone who
+ * can reach the URL. 30 requests a minute is far above what the interface
+ * generates — the builder debounces an explanation to one every 350ms of
+ * settled interaction — and far below what a loop costs.
+ */
+const LIMIT = 30;
+const WINDOW_MS = 60_000;
 
 const VOCAB = SKILLS.filter((s) => !['engineering', 'data'].includes(s.id))
   .map((s) => s.label)
@@ -118,6 +128,22 @@ function toRoles(aiRoles: AiRole[]): Role[] {
 }
 
 export async function POST(request: Request) {
+  const limit = rateLimit(clientKey(request.headers), LIMIT, WINDOW_MS);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { ok: false, error: 'Too many requests. Try again in a moment.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(limit.retryAfter),
+          'X-RateLimit-Limit': String(LIMIT),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(Math.ceil(limit.resetAt / 1000)),
+        },
+      },
+    );
+  }
+
   let body: { action?: string; payload?: Record<string, unknown> };
 
   try {
