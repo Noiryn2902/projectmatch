@@ -669,20 +669,33 @@ This follows the `fallbackBrief()` precedent: the parse runs directly in the ser
 through `/api/ai`. A Gemini pass to sharpen levels — the "fourth action on the AI route" as
 literally written — is the remaining half, layered on top of this floor, not instead of it.
 
+**Done (2026-08-27), pending one migration — claim-your-profile and endorsements.**
+`supabase/migrations/0005_claim_person.sql` adds `claim_person(p_person_id)`, `SECURITY DEFINER`,
+the same bootstrapping pattern as `create_org`: it attaches `auth.uid()` to an unclaimed roster
+row, but only for a member of that row's org, only if they hold no claimed row there already, and
+only if they are an admin *or* the row's email matches their own. **This migration is not applied
+yet — it has to be pasted into the Supabase SQL editor by hand, like 0001–0004.**
+
+Everything on top of it is written and green (`npm run verify` passes, build included):
+
+- `claimPerson()`, `getPersonAccount()`, `getMyPersonId()` in `lib/data/people.ts`; a **This is
+  me** button on the person page shown when the row is unclaimed and the viewer holds no profile in
+  the org.
+- Endorsements ride the `endorsements` table and RLS that were already in `0001` — no schema
+  change for this half. `endorseSkill()` / `removeEndorsement()`, and an **Endorse** toggle per
+  skill on the person page, shown to a viewer who has claimed a profile and is not looking at
+  their own.
+- **The engine reads it without being changed.** `toPerson()` now derives provenance: a `self` or
+  `extracted` skill with at least one endorsement is handed to the engine as `endorsed`, so
+  `skillTrust` lifts it from 0.6 / 0.75 to 0.9 and the person rises in the ranking. A `verified`
+  level, or a seeded one with no provenance, is left alone. `getPersonSkillDetail()` carries the
+  endorsement counts for the page.
+
 **Still open in Phase 3:**
-- **Gemini skill extraction** on top of the deterministic floor above.
-- **Recency** (`last_used_at`). The engine hook is ready (`skillTrust` would take a `now`), but
-  *nothing captures a skill date yet* — not the seed, not roster import, not résumé extraction —
-  so it would be invisible. Needs a data source first, and the honest ones are narrow (an explicit
-  "last used" column on import; a year parsed from a résumé is exactly the unreliable guess this
-  slice refused to make).
-- **Endorsements.** The `endorsements` table and its RLS already exist in `0001`, and effective
-  provenance could be *derived* from endorsement rows at the data layer with no migration — but the
-  person doing the endorsing needs a `people` row of their own in the org, and the org owner does
-  not have one. That is **claim-your-profile**, and claiming an imported `people` row (setting its
-  `user_id` when you are not yet an admin of anything) needs a `SECURITY DEFINER` function —
-  **a new migration the owner has to paste into the Supabase SQL editor by hand.** That is the
-  next real step and it stops at a hand-off.
+- **Apply `0005`** — the hand-off above.
+- **Gemini skill extraction** on top of the deterministic `lib/skills/extract.ts` floor.
+- **Recency** (`last_used_at`). Engine hook ready (`skillTrust` would take a `now`), but nothing
+  captures a skill date yet, so it would be invisible. Needs a data source first.
 - A per-*skill* breakdown on the ranking rather than the single weakest-link tag.
 
 ### Phase 3.5 — The engine phase

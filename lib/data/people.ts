@@ -2,7 +2,7 @@ import 'server-only';
 
 import { hasDatabase } from '../env';
 import peopleSeed from '../seed/people.json';
-import { createServerSupabase } from '../supabase/server';
+import { createServerSupabase, getCurrentUser } from '../supabase/server';
 import type { Person, PersonSkill, SkillProvenance } from '../types';
 
 /**
@@ -21,6 +21,7 @@ interface SkillRow {
   level: number;
   provenance: SkillProvenance;
   last_used_at: string | null;
+  endorsements: { id: string }[] | null;
 }
 
 interface PersonRow {
@@ -48,16 +49,28 @@ const SELECT = `
   id, org_id, name, title, office, utc_offset, years_exp, seniority,
   hours_per_week, interests, email, slack, linkedin, github, photo, hue,
   open_to_projects,
-  person_skills ( skill_id, level, provenance, last_used_at )
+  person_skills ( skill_id, level, provenance, last_used_at, endorsements ( id ) )
 `;
 
 function toPerson(row: PersonRow): Person {
-  const skills: PersonSkill[] = (row.person_skills ?? []).map((s) => ({
-    skillId: s.skill_id,
-    level: s.level,
-    provenance: s.provenance,
-    ...(s.last_used_at ? { lastUsedAt: s.last_used_at } : {}),
-  }));
+  const skills: PersonSkill[] = (row.person_skills ?? []).map((s) => {
+    // A colleague vouching for a level is stronger corroboration than a
+    // self-report or a résumé scrape — so a self/extracted skill with at
+    // least one endorsement is read by the engine as 'endorsed'. A verified
+    // level, or a seeded one with no provenance at all, is left as it is.
+    const endorsed = (s.endorsements?.length ?? 0) > 0;
+    const provenance: SkillProvenance =
+      endorsed && (s.provenance === 'self' || s.provenance === 'extracted')
+        ? 'endorsed'
+        : s.provenance;
+
+    return {
+      skillId: s.skill_id,
+      level: s.level,
+      provenance,
+      ...(s.last_used_at ? { lastUsedAt: s.last_used_at } : {}),
+    };
+  });
 
   return {
     id: row.id,
@@ -267,6 +280,136 @@ export async function addExtractedSkills(
   }
 
   return fresh.length;
+}
+
+/**
+ * Attaches the signed-in account to a roster row, through claim_person() —
+ * see supabase/migrations/0005_claim_person.sql for why this is a
+ * SECURITY DEFINER function and not an ordinary update.
+ */
+export async function claimPerson(personId: string): Promise<void> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.rpc('claim_person', { p_person_id: personId });
+  if (error) throw new Error(error.message.replace(/^.*?: /, ''));
+}
+
+/** Whether a roster row has been attached to an account, and to whom. */
+export async function getPersonAccount(
+  personId: string,
+): Promise<{ claimed: boolean; userId: string | null }> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from('people')
+    .select('user_id')
+    .eq('id', personId)
+    .maybeSingle();
+
+  if (error) throw new Error('Could not load the profile: ' + error.message);
+  const userId = (data as { user_id: string | null } | null)?.user_id ?? null;
+  return { claimed: userId !== null, userId };
+}
+
+/** The caller's own claimed person row id in an org, or null. */
+export async function getMyPersonId(orgId: string): Promise<string | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from('people')
+    .select('id')
+    .eq('org_id', orgId)
+    .eq('user_id', user.id)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error) throw new Error('Could not load your profile: ' + error.message);
+  return data ? (data as { id: string }).id : null;
+}
+
+export interface SkillDetail {
+  personSkillId: string;
+  skillId: string;
+  level: number;
+  provenance: SkillProvenance;
+  endorsementCount: number;
+  endorsedByMe: boolean;
+}
+
+/**
+ * One person's skills with the endorsement picture the person page needs —
+ * how many people have endorsed each, and whether the viewer is one of them.
+ * Kept separate from `toPerson` so the engine-facing `Person` stays a plain
+ * shape and this richer view is only paid for where it is shown.
+ */
+export async function getPersonSkillDetail(
+  personId: string,
+  viewerPersonId: string | null,
+): Promise<SkillDetail[]> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from('person_skills')
+    .select('id, skill_id, level, provenance, endorsements ( endorsed_by )')
+    .eq('person_id', personId);
+
+  if (error) throw new Error('Could not load skills: ' + error.message);
+
+  const rows = (data ?? []) as unknown as {
+    id: string;
+    skill_id: string;
+    level: number;
+    provenance: SkillProvenance;
+    endorsements: { endorsed_by: string }[] | null;
+  }[];
+
+  return rows
+    .map((r) => {
+      const ends = r.endorsements ?? [];
+      return {
+        personSkillId: r.id,
+        skillId: r.skill_id,
+        level: r.level,
+        provenance: r.provenance,
+        endorsementCount: ends.length,
+        endorsedByMe: viewerPersonId ? ends.some((e) => e.endorsed_by === viewerPersonId) : false,
+      };
+    })
+    .sort((a, b) => b.level - a.level);
+}
+
+/**
+ * Endorses one of another person's skill rows. `endorsed_by` is the
+ * endorser's own person row; the `endorsements_write` policy in 0001 refuses
+ * a self-endorsement and anyone without a person row of their own.
+ */
+export async function endorseSkill(personSkillId: string, endorserPersonId: string): Promise<void> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from('endorsements')
+    .insert({ person_skill_id: personSkillId, endorsed_by: endorserPersonId });
+
+  if (error) {
+    if (error.code === '23505') return; // already endorsed — idempotent
+    if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
+      throw new Error('You can only endorse a colleague once, and never your own skill.');
+    }
+    throw new Error('Could not record the endorsement: ' + error.message);
+  }
+}
+
+/** Withdraws the caller's endorsement of a skill row. */
+export async function removeEndorsement(
+  personSkillId: string,
+  endorserPersonId: string,
+): Promise<void> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from('endorsements')
+    .delete()
+    .eq('person_skill_id', personSkillId)
+    .eq('endorsed_by', endorserPersonId);
+
+  if (error) throw new Error('Could not withdraw the endorsement: ' + error.message);
 }
 
 /** One person, or null if they do not exist or are not visible to the caller. */
