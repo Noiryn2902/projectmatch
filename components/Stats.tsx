@@ -16,7 +16,18 @@ function useCountUp(target: number, run: boolean, ms = 900) {
       if (p < 1) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+
+    // requestAnimationFrame is throttled to nothing in a background or
+    // non-compositing tab, so the count never advanced and every figure sat
+    // at 0 — the page claimed an empty directory. A timer is not throttled
+    // the same way: whatever happened to the animation, land on the real
+    // number shortly after it should have finished.
+    const settle = setTimeout(() => setN(target), ms + 150);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(settle);
+    };
   }, [target, run, ms]);
   return n;
 }

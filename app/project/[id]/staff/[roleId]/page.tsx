@@ -189,14 +189,13 @@ export default async function StaffSeatPage({
           </form>
         )}
 
+        {/* One statement of the problem, not two. The panel below used to
+            repeat "nobody can hold this seat" immediately under the diagnosis
+            that had just said the same thing in more detail. */}
         {qualified.length === 0 && <Infeasibility diagnosis={diagnoseRole(available, role)} />}
 
-        <section className="mt-4 rounded-xl border border-line bg-panel">
-          {qualified.length === 0 ? (
-            <p className="p-4 text-[13px] text-faint italic">
-              Nobody on the roster can credibly hold this seat yet.
-            </p>
-          ) : (
+        {qualified.length > 0 && (
+          <section className="mt-4 rounded-xl border border-line bg-panel">
             <ul>
               {qualified.slice(0, 12).map((c) => (
                 <CandidateRow
@@ -214,14 +213,15 @@ export default async function StaffSeatPage({
                 />
               ))}
             </ul>
-          )}
-        </section>
+          </section>
+        )}
 
         {stretch.length > 0 && (
           <>
             <h2 className="mt-8 text-[13px] font-medium text-ink">Below the bar for this seat</h2>
             <p className="mt-1 text-[12px] text-muted">
               They may still add a lot to the team — a different question from doing this job.
+              Inviting one is a deliberate exception, so the button is not the default action.
             </p>
             <section className="mt-3 rounded-xl border border-line border-dashed bg-panel opacity-75">
               <ul>
@@ -238,6 +238,7 @@ export default async function StaffSeatPage({
                     projectId={project.id}
                     roleId={role.id}
                     readOnly={readOnly}
+                    belowBar
                   />
                 ))}
               </ul>
@@ -315,6 +316,7 @@ function CandidateRow({
   projectId,
   roleId,
   readOnly,
+  belowBar = false,
 }: {
   candidate: Candidate;
   isSeated: boolean;
@@ -326,6 +328,8 @@ function CandidateRow({
   projectId: string;
   roleId: string;
   readOnly: boolean;
+  /** Below the bar: inviting is an exception, so it must not look like the default. */
+  belowBar?: boolean;
 }) {
   const fit = Math.round(candidate.roleMatch * 100);
   const contribution = Math.round(candidate.breakdown.gapFill * 100);
@@ -413,9 +417,13 @@ function CandidateRow({
           form="invite"
           name="personId"
           value={candidate.person.id}
-          className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-panel transition-opacity hover:opacity-90"
+          className={
+            belowBar
+              ? 'shrink-0 rounded-lg border border-line-strong px-3 py-1.5 text-[12px] font-medium text-muted transition-colors hover:border-accent hover:text-accent'
+              : 'shrink-0 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-panel transition-opacity hover:opacity-90'
+          }
         >
-          Invite
+          {belowBar ? 'Invite anyway' : 'Invite'}
         </button>
       )}
     </li>

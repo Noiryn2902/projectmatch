@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import AppShell from '@/components/app/AppShell';
 import Avatar from '@/components/Avatar';
+import { buttonClass, toneForRatio } from '@/components/ui';
 import { hasDatabase } from '@/lib/env';
 import { getDemoOrg } from '@/lib/data/orgs';
 import { listPendingInvitations } from '@/lib/data/invitations';
@@ -89,25 +90,26 @@ export default async function ProjectPage({
           {brief.text}
         </h1>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-muted">
+        {/* Facts and actions were previously the same shape, sitting in the
+            same row: "12 weeks" looked exactly like "Staffing options", so a
+            label and a link were indistinguishable. Facts are plain text now;
+            anything that navigates looks like a control. */}
+        <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
           <span>{brief.durationWeeks} weeks</span>
           {brief.domain.map((d) => (
-            <span key={d} className="rounded-full border border-line px-2 py-0.5 capitalize">
+            <span key={d} className="capitalize before:mr-2 before:text-faint before:content-['·']">
               {d}
             </span>
           ))}
-          <Link
-            href={`/project/${project.id}/compare`}
-            className="ml-auto rounded-full border border-line px-2.5 py-0.5 text-accent transition-colors hover:border-accent"
-          >
-            Filter vs engine
+        </p>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href={`/project/${project.id}/compare`} className={buttonClass('secondary', 'sm')}>
+            Compare with a keyword filter
           </Link>
           {!readOnly && (
-            <Link
-              href={`/project/${project.id}/staff`}
-              className="rounded-full border border-line px-2.5 py-0.5 text-accent transition-colors hover:border-accent"
-            >
-              Staffing options
+            <Link href={`/project/${project.id}/staff`} className={buttonClass('secondary', 'sm')}>
+              Review every seat
             </Link>
           )}
         </div>
@@ -119,12 +121,20 @@ export default async function ProjectPage({
             </p>
             <p className="mt-1 text-[12px] text-muted">
               {emailed
-                ? 'Sent. Here is the link too, just in case.'
+                ? 'Sent. The seat is held until they answer.'
                 : 'No email address on file — send them this link. It works without an account.'}
             </p>
-            <code className="mt-2.5 block overflow-x-auto rounded-lg border border-line bg-canvas px-3 py-2 text-[11px] break-all text-accent">
-              /invite/{invited}
-            </code>
+            {/* Shown only when there is no mailbox to send to. When the mail
+                went out, the link is in it, and repeating the token here just
+                puts a credential on screen for no reader who needs it. */}
+            {!emailed && (
+              <Link
+                href={`/invite/${invited}`}
+                className="mt-2.5 block truncate rounded-lg border border-line bg-canvas px-3 py-2 text-[12px] text-accent underline-offset-2 hover:underline"
+              >
+                /invite/{invited}
+              </Link>
+            )}
           </div>
         )}
 
@@ -228,11 +238,25 @@ export default async function ProjectPage({
             <section className="rounded-xl border border-line bg-panel p-4">
               <div className="flex items-baseline justify-between text-[12px]">
                 <span className="text-muted">Requirements covered</span>
-                <span className="font-display text-[15px] font-semibold text-good">{pct}%</span>
+                {/* Colour follows the number. This was hard-coded green, so an
+                    empty team reported 0% in the colour of success. */}
+                <span
+                  className={`font-display text-[15px] font-semibold ${
+                    { neutral: 'text-ink', accent: 'text-accent', good: 'text-good', warn: 'text-warn' }[
+                      toneForRatio(health.coverage)
+                    ]
+                  }`}
+                >
+                  {pct}%
+                </span>
               </div>
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-panel-2">
                 <div
-                  className="h-full rounded-full bg-good transition-all duration-500 ease-out"
+                  className={`h-full rounded-full transition-all duration-500 ease-out ${
+                    { neutral: 'bg-line-strong', accent: 'bg-accent', good: 'bg-good', warn: 'bg-warn' }[
+                      toneForRatio(health.coverage)
+                    ]
+                  }`}
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -307,9 +331,14 @@ export default async function ProjectPage({
                       {inv.personName}{' '}
                       <span className="font-normal text-muted">&middot; {inv.roleTitle}</span>
                     </p>
-                    <code className="mt-1 block overflow-x-auto text-[11px] break-all text-accent">
-                      /invite/{inv.token}
-                    </code>
+                    {/* The raw token used to be printed here in full. It is a
+                        credential, it means nothing to a reader, and it made
+                        every row look like a stack trace. The status is what
+                        the owner actually needs; the link belongs in the
+                        email that was sent. */}
+                    <p className="mt-0.5 text-[12px] text-muted">
+                      Invitation sent &middot; awaiting their answer
+                    </p>
                   </div>
                   <span className="shrink-0 text-[11px] text-faint">
                     expires {new Date(inv.expiresAt).toLocaleDateString()}

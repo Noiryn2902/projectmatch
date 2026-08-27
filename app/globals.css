@@ -100,15 +100,14 @@ body {
   outline: none;
 }
 
-/* Film grain. Fixed so it reads as an emulsion over the whole frame. */
-.pm-grain::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+/* The film grain that used to live here was a fixed, full-viewport overlay
+   painted from an SVG feTurbulence filter. Procedural noise is one of the most
+   expensive things a browser can rasterise, and pinning it to the viewport made
+   it repaint on every scroll, on every page, above everything else. It was the
+   single largest cause of the scroll jank. The class is kept as a no-op so the
+   markup does not have to change; there is nothing to paint. */
+.pm-grain {
+  /* intentionally empty */
 }
 
 /* Text over footage needs its own contrast, not just a darker plate. The
@@ -143,22 +142,24 @@ body {
   animation: pm-in 0.2s ease-out both;
 }
 
-/* Staged reveal. Each step lands a beat after the one above it. */
+/* Staged reveal. Each step lands a beat after the one above it.
+   Opacity and transform only: both run on the compositor. The animated
+   blur() this used to carry forced a full repaint of the hero on every
+   frame of the intro, which is exactly when the page should feel fastest. */
 @keyframes pm-rise {
   from {
     opacity: 0;
-    transform: translateY(14px);
-    filter: blur(6px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
     transform: none;
-    filter: none;
   }
 }
 
 .pm-rise {
-  animation: pm-rise 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: pm-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
 }
 
 .pm-d1 {
