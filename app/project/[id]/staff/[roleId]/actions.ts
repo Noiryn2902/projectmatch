@@ -35,7 +35,13 @@ export async function inviteAction(formData: FormData) {
 
   if (!projectId || !roleId || !personId) return;
 
-  const token = await inviteToSeat(roleId, personId);
+  // A line of context from the person doing the asking. The invitation page
+  // has always rendered this; there was simply never a box to type it in.
+  const message = String(formData.get('message') ?? '')
+    .trim()
+    .slice(0, 500);
+
+  const token = await inviteToSeat(roleId, personId, message || undefined);
 
   const h = await headers();
   const host = h.get('host') ?? 'localhost:3000';

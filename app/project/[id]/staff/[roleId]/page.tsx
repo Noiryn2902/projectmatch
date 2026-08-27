@@ -166,6 +166,29 @@ export default async function StaffSeatPage({
           look alone.
         </p>
 
+        {/*
+          One form serving every Invite button on the page, associated by id
+          rather than by nesting. A single note then applies to whoever you
+          pick, the buttons stay inside their own rows, and none of it needs
+          JavaScript.
+        */}
+        {!readOnly && qualified.length > 0 && (
+          <form id="invite" action={inviteAction} className="mt-3">
+            <input type="hidden" name="projectId" value={project.id} />
+            <input type="hidden" name="roleId" value={role.id} />
+            <label htmlFor="message" className="sr-only">
+              A note to send with the invitation
+            </label>
+            <input
+              id="message"
+              name="message"
+              maxLength={500}
+              placeholder="Add a note — why them, what the work is (optional)"
+              className="w-full rounded-full border border-line bg-panel px-4 py-2 text-[13px] outline-none transition-colors focus:border-accent"
+            />
+          </form>
+        )}
+
         {qualified.length === 0 && <Infeasibility diagnosis={diagnoseRole(available, role)} />}
 
         <section className="mt-4 rounded-xl border border-line bg-panel">
@@ -382,17 +405,18 @@ function CandidateRow({
           Declined
         </span>
       ) : (
-        <form action={inviteAction} className="shrink-0">
-          <input type="hidden" name="projectId" value={projectId} />
-          <input type="hidden" name="roleId" value={roleId} />
-          <input type="hidden" name="personId" value={candidate.person.id} />
-          <button
-            type="submit"
-            className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-panel transition-opacity hover:opacity-90"
-          >
-            Invite
-          </button>
-        </form>
+        // Submits the shared #invite form above, carrying this person as the
+        // button's own value — so the note typed once applies to whoever is
+        // picked, without a textarea repeated on every row.
+        <button
+          type="submit"
+          form="invite"
+          name="personId"
+          value={candidate.person.id}
+          className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-panel transition-opacity hover:opacity-90"
+        >
+          Invite
+        </button>
       )}
     </li>
   );

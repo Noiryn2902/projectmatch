@@ -10,6 +10,7 @@ import {
   endorseSkill,
   getMyPersonId,
   removeEndorsement,
+  updatePersonDetails,
 } from '@/lib/data/people';
 import { AvatarError, setAvatar } from '@/lib/data/avatars';
 import { extractSkillsSmart } from '@/lib/skills/ai-extract';
@@ -151,5 +152,33 @@ export async function importGitHubAction(formData: FormData) {
     error
       ? `/app/org/${slug}/people/${personId}?file_error=${encodeURIComponent(error)}`
       : `/app/org/${slug}/people/${personId}?added=${added}&by=github`,
+  );
+}
+
+/** Saves edited profile details. RLS decides whether the write is allowed. */
+export async function updateDetailsAction(formData: FormData) {
+  const slug = String(formData.get('slug') ?? '');
+  const personId = String(formData.get('personId') ?? '');
+  const name = String(formData.get('name') ?? '').trim();
+  if (!slug || !personId || !name) return;
+
+  const hoursRaw = String(formData.get('hoursPerWeek') ?? '');
+  let error: string | null = null;
+  try {
+    await updatePersonDetails(personId, {
+      name,
+      title: String(formData.get('title') ?? '').trim(),
+      office: String(formData.get('office') ?? '').trim(),
+      hoursPerWeek: hoursRaw ? Math.max(0, Math.min(40, Number(hoursRaw) || 0)) : 0,
+    });
+  } catch (err) {
+    error = err instanceof Error ? err.message : 'Could not save your changes.';
+  }
+
+  revalidatePath(REVALIDATE, 'page');
+  redirect(
+    error
+      ? `/app/org/${slug}/people/${personId}?file_error=${encodeURIComponent(error)}`
+      : `/app/org/${slug}/people/${personId}?saved=1`,
   );
 }

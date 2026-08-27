@@ -144,8 +144,17 @@ export default async function OrgRosterPage({
                     <Avatar person={p} size={32} />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-medium">{p.name}</p>
-                      <p className="truncate text-[12px] text-muted">{p.title || 'No title yet'}</p>
+                      <p className="truncate text-[12px] text-muted">
+                        {p.title || 'No title yet'}
+                        {p.office && <span className="text-faint"> &middot; {p.office}</span>}
+                      </p>
                     </div>
+                    {/* A roster is only a contact list if you can reach people. */}
+                    {p.contact.email && (
+                      <span className="hidden shrink-0 truncate text-[11px] text-faint sm:block sm:max-w-[190px]">
+                        {p.contact.email}
+                      </span>
+                    )}
                     <span className="shrink-0 text-[11px] text-faint">{p.hoursPerWeek} hrs/wk</span>
                   </Link>
                 </li>

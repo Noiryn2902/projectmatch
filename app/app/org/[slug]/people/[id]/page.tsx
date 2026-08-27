@@ -20,6 +20,7 @@ import {
   endorseAction,
   importGitHubAction,
   setAvatarAction,
+  updateDetailsAction,
 } from './actions';
 
 const PROVENANCE: Record<SkillProvenance, { label: string; className: string }> = {
@@ -49,6 +50,7 @@ export default async function PersonPage({
     need_profile?: string;
     file_error?: string;
     photo?: string;
+    saved?: string;
     welcome?: string;
     read?: string;
     by?: string;
@@ -115,7 +117,7 @@ export default async function PersonPage({
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted">
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-muted">
           {person.office && <span>{person.office}</span>}
           <span>{person.hoursPerWeek} hrs/wk</span>
           <span>seniority {person.seniority}</span>
@@ -123,7 +125,69 @@ export default async function PersonPage({
             UTC{person.utcOffset >= 0 ? '+' : ''}
             {person.utcOffset}
           </span>
+          {person.contact.email && <span className="truncate">{person.contact.email}</span>}
         </div>
+
+        {/*
+          Collapsed by default. Editing is rare next to reading, and a form
+          sitting open on every visit is exactly the clutter this page was
+          accused of.
+        */}
+        {(isMe || canEdit) && (
+          <details className="mt-4 rounded-xl border border-line bg-panel">
+            <summary className="cursor-pointer px-4 py-2.5 text-[12px] text-muted select-none hover:text-ink">
+              Edit details
+            </summary>
+            <form action={updateDetailsAction} className="border-t border-line p-4">
+              <input type="hidden" name="slug" value={slug} />
+              <input type="hidden" name="personId" value={person.id} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="block text-[11px] text-muted">Name</span>
+                  <input
+                    name="name"
+                    required
+                    defaultValue={person.name}
+                    className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] text-muted">What you do</span>
+                  <input
+                    name="title"
+                    defaultValue={person.title}
+                    className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] text-muted">Where</span>
+                  <input
+                    name="office"
+                    defaultValue={person.office}
+                    className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] text-muted">Hours a week</span>
+                  <input
+                    name="hoursPerWeek"
+                    type="number"
+                    min={0}
+                    max={40}
+                    defaultValue={person.hoursPerWeek}
+                    className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
+                  />
+                </label>
+              </div>
+              <button
+                type="submit"
+                className="mt-3 rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-panel transition-opacity hover:opacity-90"
+              >
+                Save
+              </button>
+            </form>
+          </details>
+        )}
 
         {sp.welcome && (
           <Banner tone="good">
@@ -161,6 +225,7 @@ export default async function PersonPage({
           </Banner>
         )}
         {sp.photo && <Banner tone="good">Photo updated.</Banner>}
+        {sp.saved && <Banner tone="good">Details saved.</Banner>}
         {sp.denied && <Banner tone="warn">Editing the roster is limited to organisation admins.</Banner>}
         {sp.file_error && <Banner tone="warn">{sp.file_error}</Banner>}
 

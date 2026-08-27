@@ -473,3 +473,33 @@ export async function getPerson(id: string): Promise<Person | null> {
   if (error) throw new Error('Could not load person: ' + error.message);
   return data ? toPerson(data as unknown as PersonRow) : null;
 }
+
+/**
+ * Updates the details a person owns about themselves.
+ *
+ * Ordinary RLS: `people_update` allows your own row, or any row in an org
+ * you administer, and refuses the demo org outright. No privileged path, so
+ * the same rule that governs every other write governs this one.
+ */
+export async function updatePersonDetails(
+  personId: string,
+  input: { name: string; title: string; office: string; hoursPerWeek: number },
+): Promise<void> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from('people')
+    .update({
+      name: input.name,
+      title: input.title,
+      office: input.office,
+      hours_per_week: input.hoursPerWeek,
+    })
+    .eq('id', personId);
+
+  if (error) {
+    if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
+      throw new Error('You can only edit your own profile.');
+    }
+    throw new Error('Could not save your changes: ' + error.message);
+  }
+}
