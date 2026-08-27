@@ -472,7 +472,15 @@ Current: **95.92/100**.
   *six* orgs breaks cross-org team building, since people are only visible inside their own org.
   Most likely answer: one demo org, and the six become departments or offices. Needs deciding
   before the seed migration is written. `lib/data/people.ts` carries a comment pointing here.
-- GitHub OAuth from day one, or magic link only first?
+  **Resolved (2026-08-27):** one demo org, six departments — see §7 Phase 0.
+- ~~GitHub OAuth from day one, or magic link only first?~~ **Resolved (2026-08-27):** email,
+  Google, and GitHub are all live, tested against the real providers. **Before the demo**: the
+  Google OAuth app is still in Testing mode (Google Cloud Console → Audience) — only accounts
+  added as test users can sign in until it's published, or judges hit a wall. LinkedIn OAuth is
+  deferred (needs a LinkedIn Company Page + a logo upload, not code work). Phone/SMS OTP is
+  declined outright — Supabase needs a paid SMS provider, and Indian numbers additionally require
+  DLT registration with TRAI before an OTP SMS can be sent at all; email magic link already covers
+  the same need for free.
 - Does the presentation want a live demo against real data, or the deterministic demo org? Affects
   how much Phase 4 polish matters.
 - Is there an appetite for §6.7 growth-aware staffing? It is the most distinctive item here and
