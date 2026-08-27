@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import Avatar from '@/components/Avatar';
+import { capacityVerdict } from '@/lib/capacity';
+import { getCommitments } from '@/lib/data/allocations';
 import { getDemoOrg } from '@/lib/data/orgs';
 import { getProject } from '@/lib/data/projects';
 import { listPeople } from '@/lib/data/people';
@@ -40,7 +42,11 @@ export default async function StaffSeatPage({
   const role = project.roles.find((r) => r.id === roleId);
   if (!role) notFound();
 
-  const [pool, demoOrg] = await Promise.all([listPeople(project.orgId), getDemoOrg()]);
+  const [pool, demoOrg, commitments] = await Promise.all([
+    listPeople(project.orgId),
+    getDemoOrg(),
+    getCommitments(project.orgId),
+  ]);
 
   // Someone already awaiting an answer on another seat of this project is
   // spoken for. The engine only knows about *filled* seats — an invitation is
@@ -174,6 +180,8 @@ export default async function StaffSeatPage({
                   isSeated={c.person.id === seatedId}
                   hasDeclined={declinedIds.has(c.person.id)}
                   trust={coveringProvenance(c.person, role.requirements)}
+                  committed={commitments.get(c.person.id)}
+                  roleHours={role.hoursNeeded}
                   projectId={project.id}
                   roleId={role.id}
                   readOnly={readOnly}
@@ -199,6 +207,8 @@ export default async function StaffSeatPage({
                     isSeated={c.person.id === seatedId}
                     hasDeclined={declinedIds.has(c.person.id)}
                     trust={coveringProvenance(c.person, role.requirements)}
+                    committed={commitments.get(c.person.id)}
+                    roleHours={role.hoursNeeded}
                     projectId={project.id}
                     roleId={role.id}
                     readOnly={readOnly}
@@ -273,6 +283,8 @@ function CandidateRow({
   isSeated,
   hasDeclined,
   trust,
+  committed,
+  roleHours,
   projectId,
   roleId,
   readOnly,
@@ -281,6 +293,8 @@ function CandidateRow({
   isSeated: boolean;
   hasDeclined: boolean;
   trust: Trust;
+  committed?: { hours: number; projects: number };
+  roleHours: number;
   projectId: string;
   roleId: string;
   readOnly: boolean;
@@ -288,6 +302,9 @@ function CandidateRow({
   const fit = Math.round(candidate.roleMatch * 100);
   const contribution = Math.round(candidate.breakdown.gapFill * 100);
   const tag = TRUST_TAG[trust];
+
+  const load = committed?.hours ?? 0;
+  const verdict = capacityVerdict(load, roleHours, candidate.person.hoursPerWeek);
 
   return (
     <li className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-b-0">
@@ -300,9 +317,22 @@ function CandidateRow({
               {tag.label}
             </span>
           )}
+          {verdict !== 'clear' && (
+            <span
+              className={`rounded-full border px-1.5 py-0 text-[10px] font-normal ${
+                verdict === 'over' ? 'border-warn/40 text-warn' : 'border-line text-faint'
+              }`}
+            >
+              {verdict === 'over' ? 'over capacity' : 'near capacity'}
+            </span>
+          )}
         </p>
         <p className="truncate text-[12px] text-muted">
           {candidate.person.title || 'No title yet'} &middot; {candidate.person.hoursPerWeek} hrs/wk
+          {load > 0 &&
+            ` · ${load} committed across ${committed?.projects} project${
+              committed?.projects === 1 ? '' : 's'
+            }`}
         </p>
       </div>
 

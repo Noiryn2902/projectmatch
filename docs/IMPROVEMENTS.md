@@ -250,14 +250,26 @@ Phases 0–4 below make ProjectMatch *real*. Not one of them makes it *smarter*.
 plumbing the engine knows exactly what it knows today. Since the engine is the only differentiator,
 the items here are what raise the ceiling.
 
-### 6.1 Capacity is fiction — model allocation **[Proposed, highest value]**
+### 6.1 Capacity is fiction — model allocation **[Done (first cut) — 2026-08-27]**
 
-`hoursPerWeek` floats free of reality. A person can be seated on unlimited teams simultaneously and
-the engine never notices. Real staffing is allocation: capacity minus existing commitments.
+`hoursPerWeek` was a ceiling that meant nothing — a person could be seated on every project at once
+and nothing noticed.
 
-Modelling it unlocks **conflict detection** — *"this team is only possible if you take Priya off
-Atlas."* That is not a feature, that is the job the tool exists to do. Nothing else on this list
-changes the product's usefulness as much.
+`getCommitments(orgId)` in `lib/data/allocations.ts` derives real commitment straight from filled
+seats: the sum of `hours_needed` across every seat a person holds, org-wide, and how many projects
+that spans. No `allocations` rows to keep in sync (the table exists but stays empty), so it cannot
+drift. `capacityVerdict(committed, adding, capacity)` in `lib/capacity.ts` — pure, tested — returns
+`clear` / `tight` (past 90% of the ceiling, or exactly on it) / `over`.
+
+The staffing page now shows, per candidate, `"20 committed across 2 projects"` under the name and
+an **over capacity** / **near capacity** tag when seating them in this seat would breach or nearly
+breach their week. 9 assertions in `scripts/test-capacity.ts` (`npm run verify` runs it). No
+migration — `allocations` RLS was already in `0001` and this cut does not even need the table.
+
+**Not yet:** the engine itself does not penalise over-allocation (it stays pure and unaware of
+other projects — the check lives at the page), there is no team-level *"this team only works if you
+take Priya off Atlas"* summary on the project page, and time-phased overlap (`starts_on`/`ends_on`)
+is ignored. Those are the next cuts.
 
 ### 6.2 `coverage()` is blind to key-person risk **[Done — 2026-08-27]**
 
