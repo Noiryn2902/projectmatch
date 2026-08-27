@@ -476,6 +476,41 @@ an assertion rather than an invitation — which is Phase 2 below.
 - Second-inviter, already-invited, already-accepted and revoked states all handled. This is where a
   real product either holds or falls apart.
 
+**Done (2026-08-27) — the invitation state machine, and a link that answers itself.**
+`supabase/migrations/0004_invitations.sql` adds two functions and they differ in a way worth
+noting: `invite_to_seat()` is plain `SECURITY INVOKER` (the caller is already a member acting on
+their own project — ordinary RLS is the right check), while `respond_to_invitation()` is
+`SECURITY DEFINER`, because the recipient may have **no account at all**, and therefore no
+permission to read the invitation, the seat, or their own person row. The token is the
+authorisation — the same trust model as any invitation email.
+
+`/invite/[token]` — the one route that has to work for a stranger — reads through the admin client
+with only the token as input, and never asks for a sign-in. `/project/[id]/staff/[roleId]`'s
+primary action is now **Invite**, not **Seat**: it holds the chair without filling it.
+
+**A real design decision, not just plumbing:** an invited-but-unanswered seat does not count toward
+`teamHealth()` coverage. `ProjectDetail.team` — what the engine sees — only ever contains *filled*
+seats; a new `seats` map carries the fuller `open / invited / filled` picture for the interface.
+Counting an unconfirmed invitation as coverage would be exactly the kind of overclaiming this
+product exists to refuse.
+
+**Verified against the live database, the whole state machine, not just the happy path:** invite
+Arjun to a seat (held, not filled) → a second invite to the *same* seat refused by the partial
+unique index from Phase 0, not by application logic → Arjun declines (seat reopens) → replaying the
+same link says "already declined" rather than reprocessing → Sara is invited and accepts (seat
+filled, by her) → a bogus token returns a clean "not found" → an invitation with a past
+`expires_at` reopens the seat rather than holding it forever. Then, separately, through the actual
+UI in a browser with **no session at all**: the invite page rendered the real name, org, brief, and
+message; clicking Accept filled the seat; the database confirmed `filled` with the right person id
+and the invitation row showed `accepted` with a real timestamp.
+
+**Not done, stated rather than left implicit:** no email delivery — the link is shown on the
+project page for now, to be copied and sent by hand. No revoke button. No UI listing pending
+invitations. Chat still does not exist to unlock. **Re-ranking on decline isn't automatic yet** —
+the seat reopens, but going back to the staffing page to see the new ranking is a manual step, not
+a proposal the product makes; that is the natural next slice, since the ranking page it needs
+already exists.
+
 ### Phase 3 — Skills you can trust
 
 - Resume paste and GitHub import as a fourth action on the AI route — constrained to the 82-skill

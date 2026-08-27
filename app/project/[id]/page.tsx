@@ -20,8 +20,15 @@ import { labelOf } from '@/lib/engine/graph';
  * (invitations), once there is someone real to attribute an edit or a
  * message to.
  */
-export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ invited?: string }>;
+}) {
   const { id } = await params;
+  const { invited } = await searchParams;
 
   if (!hasDatabase) {
     // Nothing before this route had a concept of a persisted project — there
@@ -50,8 +57,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const demoOrg = await getDemoOrg();
   const readOnly = demoOrg !== null && project.orgId === demoOrg.id;
 
-  const { brief, roles, team, members, health } = project;
-  const memberById = new Map(members.map((m) => [m.id, m]));
+  const { brief, roles, health, seats } = project;
   const pct = Math.round(health.coverage * 100);
 
   return (
@@ -84,16 +90,33 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           ))}
         </div>
 
+        {invited && (
+          <div className="mt-6 rounded-xl border border-line border-l-2 border-l-accent bg-panel px-4 py-3.5">
+            <p className="text-[13px] font-medium text-ink">Invitation ready to send</p>
+            <p className="mt-1 text-[12px] text-muted">
+              Email delivery is not built yet, so this link has to be passed along by hand. It works
+              for someone with no account.
+            </p>
+            <code className="mt-2.5 block overflow-x-auto rounded-lg border border-line bg-canvas px-3 py-2 text-[11px] break-all text-accent">
+              /invite/{invited}
+            </code>
+          </div>
+        )}
+
         <div className="mt-8 grid gap-4 sm:grid-cols-[1fr_260px]">
           <section className="rounded-xl border border-line bg-panel">
             <ul>
               {roles.map((role) => {
-                const person = team[role.id] ? memberById.get(team[role.id]!) : undefined;
+                const seat = seats[role.id] ?? { state: 'open' as const, person: null };
+                const person = seat.person;
+                const awaiting = seat.state === 'invited';
                 return (
                   <li key={role.id} className="border-b border-line px-4 py-3 last:border-b-0">
                     <div className="flex items-center gap-3">
                       {person ? (
-                        <Avatar person={person} size={32} />
+                        <span className={awaiting ? 'opacity-50' : undefined}>
+                          <Avatar person={person} size={32} />
+                        </span>
                       ) : (
                         <span
                           aria-hidden
@@ -103,9 +126,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-medium">{role.title}</p>
                         <p
-                          className={`truncate text-[12px] ${person ? 'text-muted' : 'text-faint italic'}`}
+                          className={`truncate text-[12px] ${
+                            seat.state === 'filled' ? 'text-muted' : 'text-faint italic'
+                          }`}
                         >
-                          {person ? person.name : 'Open seat'}
+                          {awaiting && person
+                            ? person.name + ' — invited, awaiting reply'
+                            : person
+                              ? person.name
+                              : 'Open seat'}
                         </p>
                       </div>
                       <span className="shrink-0 text-[11px] text-faint">
@@ -115,7 +144,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                         href={`/project/${project.id}/staff/${role.id}`}
                         className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-[12px] text-muted transition-colors hover:border-line-strong hover:text-ink"
                       >
-                        {readOnly ? 'See ranking' : person ? 'Change' : 'Find someone'}
+                        {readOnly ? 'See ranking' : seat.state === 'filled' ? 'Change' : 'Find someone'}
                       </Link>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5 pl-11">

@@ -29,12 +29,27 @@ export interface ProjectSummary {
   createdAt: string;
 }
 
+export interface SeatView {
+  state: 'open' | 'invited' | 'filled';
+  person: Person | null;
+}
+
 export interface ProjectDetail extends ProjectSummary {
   brief: Brief;
   roles: Role[];
+  /**
+   * Filled seats only. Someone who has been invited but has not answered is
+   * deliberately absent: they are not on the team yet, and counting them
+   * would inflate coverage with a commitment nobody has made. `seats` below
+   * carries the fuller picture for the interface.
+   */
   team: TeamState;
   members: Person[];
   health: TeamHealth;
+  /** Every seat by role id, including who is merely invited. */
+  seats: Record<string, SeatView>;
+  /** Spoken for but unconfirmed — excluded from candidate lists elsewhere. */
+  invitedPersonIds: string[];
 }
 
 interface RequirementRow {
@@ -117,16 +132,34 @@ export async function getProject(id: string): Promise<ProjectDetail | null> {
     })),
   }));
 
+  // Only a filled seat puts someone on the team. An invited seat is held, not
+  // taken — the difference is the whole point of asking rather than assigning.
   const team: TeamState = {};
+  const invitedPersonIds: string[] = [];
   for (const r of roleRows) {
-    team[r.id] = seatByRole.get(r.id)?.person_id ?? null;
+    const seat = seatByRole.get(r.id);
+    team[r.id] = seat?.state === 'filled' ? (seat.person_id ?? null) : null;
+    if (seat?.state === 'invited' && seat.person_id) invitedPersonIds.push(seat.person_id);
   }
 
   const filledIds = Object.values(team).filter((id): id is string => Boolean(id));
-  const members = await getPeopleByIds(filledIds);
-  const memberById = new Map(members.map((m) => [m.id, m]));
+  // One round trip for everyone the interface needs to name, seated or merely
+  // asked, rather than a second query for the invited.
+  const people = await getPeopleByIds([...filledIds, ...invitedPersonIds]);
+  const personById = new Map(people.map((m) => [m.id, m]));
   // Preserve seat order rather than the arbitrary order getPeopleByIds returns.
-  const orderedMembers = filledIds.map((id) => memberById.get(id)).filter((p): p is Person => Boolean(p));
+  const orderedMembers = filledIds
+    .map((id) => personById.get(id))
+    .filter((p): p is Person => Boolean(p));
+
+  const seats: Record<string, SeatView> = {};
+  for (const r of roleRows) {
+    const seat = seatByRole.get(r.id);
+    seats[r.id] = {
+      state: seat?.state ?? 'open',
+      person: seat?.person_id ? (personById.get(seat.person_id) ?? null) : null,
+    };
+  }
 
   const brief: Brief = {
     text: row.brief_text,
@@ -146,6 +179,8 @@ export async function getProject(id: string): Promise<ProjectDetail | null> {
     team,
     members: orderedMembers,
     health: teamHealth(brief, orderedMembers, roles.length),
+    seats,
+    invitedPersonIds,
   };
 }
 

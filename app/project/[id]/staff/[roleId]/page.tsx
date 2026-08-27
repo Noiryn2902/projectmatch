@@ -8,7 +8,7 @@ import { listPeople } from '@/lib/data/people';
 import { SEAT_FLOOR, rankCandidates, type Candidate } from '@/lib/engine/assemble';
 import { labelOf } from '@/lib/engine/graph';
 
-import { fillSeatAction } from './actions';
+import { fillSeatAction, inviteAction } from './actions';
 
 /**
  * Where the engine finally meets real data.
@@ -40,7 +40,16 @@ export default async function StaffSeatPage({
 
   const [pool, demoOrg] = await Promise.all([listPeople(project.orgId), getDemoOrg()]);
 
-  const ranked = rankCandidates(pool, role, project.brief, project.team, {
+  // Someone already awaiting an answer on another seat of this project is
+  // spoken for. The engine only knows about *filled* seats — an invitation is
+  // not a commitment, so it must not count toward coverage — which leaves
+  // this exclusion to the caller.
+  const invitedElsewhere = new Set(
+    project.invitedPersonIds.filter((pid) => pid !== project.seats[role.id]?.person?.id),
+  );
+  const available = pool.filter((p) => !invitedElsewhere.has(p.id));
+
+  const ranked = rankCandidates(available, role, project.brief, project.team, {
     sort: 'bestFit',
     scope: { companyId: null, office: null },
     search: '',
@@ -77,7 +86,8 @@ export default async function StaffSeatPage({
   const qualified = candidates.filter((c) => c.roleMatch >= SEAT_FLOOR);
   const stretch = candidates.filter((c) => c.roleMatch < SEAT_FLOOR);
 
-  const seatedId = project.team[role.id];
+  // Whoever currently holds this seat, filled or merely invited.
+  const seatedId = project.seats[role.id]?.person?.id ?? null;
 
   // The demo org is readable by anyone and writable by nobody — that is the
   // policy, and it is correct. So don't offer a button here that the database
@@ -162,7 +172,7 @@ export default async function StaffSeatPage({
         <p className="mt-3 text-[11px] text-faint">
           {readOnly
             ? 'This is the demo organisation — anyone can look at it, nobody can change it. Create your own organisation to staff a project for real.'
-            : 'Seating someone here assigns them directly. Asking them first — an invitation they can accept or decline — is next.'}
+            : 'Inviting holds the seat but does not fill it. It is theirs once they accept, and reopens if they decline.'}
         </p>
       </div>
     </main>
@@ -219,18 +229,28 @@ function CandidateRow({
             Seated
           </span>
         )
-      ) : (
+      ) : isSeated ? (
         <form action={fillSeatAction} className="shrink-0">
           <input type="hidden" name="projectId" value={projectId} />
           <input type="hidden" name="roleId" value={roleId} />
-          <input type="hidden" name="personId" value={isSeated ? '' : candidate.person.id} />
+          <input type="hidden" name="personId" value="" />
           <button
             type="submit"
-            className={`rounded-lg px-3 py-1.5 text-[12px] font-medium transition-opacity hover:opacity-90 ${
-              isSeated ? 'border border-line text-muted' : 'bg-accent text-panel'
-            }`}
+            className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted transition-opacity hover:opacity-90"
           >
-            {isSeated ? 'Remove' : 'Seat'}
+            Remove
+          </button>
+        </form>
+      ) : (
+        <form action={inviteAction} className="shrink-0">
+          <input type="hidden" name="projectId" value={projectId} />
+          <input type="hidden" name="roleId" value={roleId} />
+          <input type="hidden" name="personId" value={candidate.person.id} />
+          <button
+            type="submit"
+            className="rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-panel transition-opacity hover:opacity-90"
+          >
+            Invite
           </button>
         </form>
       )}
