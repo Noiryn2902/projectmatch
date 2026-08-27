@@ -405,12 +405,39 @@ readable from `Test Co`'s roster, and a direct insert attempt against it was blo
 count after the attempt was unchanged. RLS holds in both directions, not just the happy path.
 
 **Not done yet, on purpose — narrowly scoped to prove the pipe works end to end:**
-- CSV/JSON bulk import (still one person at a time)
+- ~~CSV/JSON bulk import (still one person at a time)~~ **done, see below**
 - Claim-your-profile / self-onboarding (needs an invitation or a matching mechanism — Phase 2
   territory, or a follow-up slice)
 - Edit / withdraw / delete on a person's own profile
 - Multiple orgs per user (an owner can currently only ever have the one `/app` redirects to)
 - No nav link anywhere points at `/app` yet — reachable only by URL, same as `/project/[id]`
+
+**Done (2026-08-27) — roster import, the answer to cold start.** `/app/org/[slug]/import` takes a
+paste from Excel / Sheets / a CSV export and turns it into roster rows. `lib/import/roster.ts` is
+pure and client-safe: an RFC4180-ish `parseDelimited()` (quoted commas, `""` escapes, quoted
+newlines, comma-vs-tab sniffing) and `normaliseRoster()`, which maps header aliases to canonical
+fields (`name` required; title, email, department, office, hours, seniority recognised; anything
+else listed as ignored), clamps hours to 0–40 and seniority to 1–5, and marks every row
+`ok | dup-roster | dup-file | invalid`. The same pure function draws the live preview in the
+browser as you paste and runs again server-side at commit — the client's parsed rows are never
+trusted, only the raw text crosses back.
+
+`importPeople()` in `lib/data/people.ts` is one batched insert under the ordinary `people_insert`
+RLS policy — an org admin can, a plain member cannot, and a non-admin gets a clean "only an
+organisation admin can import a roster" rather than a partial write. No migration, no
+`SECURITY DEFINER`: same reasoning as `create_project()`, there is no bootstrapping deadlock here.
+The page itself is admin-gated (`getMyRole()`, new in `lib/data/orgs.ts`) and redirects a
+non-admin back to the roster rather than showing a form the database would reject.
+
+**Tests:** `scripts/test-import.ts` — 22 assertions over the parser (delimiter sniffing, quoting,
+the three duplicate kinds, clamping, unknown columns, empty input). Wired into `npm run verify` as
+`test:import`, kept separate from the 51 engine checks so "engine invariants hold" stays a
+distinct claim. `npm run verify` green: typecheck + lint + 51 engine + 22 import + build.
+
+**Not verified against live data yet** — needs a signed-in admin session to paste and commit
+through the UI. **Still open:** claim-your-profile, and skills/timezone/availability on imported
+people (import only sets name, title, email, department, office, hours, seniority — imported people
+have no skills, so they will not rank until Phase 3).
 
 **Done (2026-08-27) — the write path on projects.** `/app/org/[slug]/new` submits a brief through
 the same deterministic `fallbackBrief()` parser the live builder falls back to, and

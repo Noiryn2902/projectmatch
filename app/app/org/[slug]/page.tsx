@@ -22,13 +22,21 @@ import { addPersonAction } from './actions';
  * to, because "that org does not exist" and "you cannot see that org" ought
  * to look identical to someone probing from the outside.
  */
-export default async function OrgRosterPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function OrgRosterPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ imported?: string; import_denied?: string }>;
+}) {
   const { slug } = await params;
+  const { imported, import_denied: importDenied } = await searchParams;
 
   const org = await getOrgBySlug(slug);
   if (!org) notFound();
 
   const [people, projects] = await Promise.all([listPeople(org.id), listProjects(org.id)]);
+  const importedCount = imported ? Number(imported) : 0;
 
   return (
     <main className="pm-grain min-h-screen">
@@ -75,10 +83,29 @@ export default async function OrgRosterPage({ params }: { params: Promise<{ slug
 
         <div className="mt-10 flex items-baseline justify-between">
           <h2 className="font-display text-lg font-semibold text-ink">Roster</h2>
-          <span className="text-[12px] text-muted">
-            {people.length} {people.length === 1 ? 'person' : 'people'}
-          </span>
+          <div className="flex items-baseline gap-3">
+            <span className="text-[12px] text-muted">
+              {people.length} {people.length === 1 ? 'person' : 'people'}
+            </span>
+            <Link
+              href={`/app/org/${org.slug}/import`}
+              className="text-[12px] text-accent underline underline-offset-2"
+            >
+              Import
+            </Link>
+          </div>
         </div>
+
+        {importedCount > 0 && (
+          <div className="mt-4 rounded-xl border border-line border-l-2 border-l-good bg-panel px-4 py-3 text-[13px] text-ink">
+            Imported {importedCount} {importedCount === 1 ? 'person' : 'people'} into the roster.
+          </div>
+        )}
+        {importDenied && (
+          <div className="mt-4 rounded-xl border border-line border-l-2 border-l-warn bg-panel px-4 py-3 text-[13px] text-ink">
+            Importing a roster is limited to organisation admins.
+          </div>
+        )}
 
         <section className="mt-5 rounded-xl border border-line bg-panel">
           {people.length === 0 ? (
@@ -137,7 +164,14 @@ export default async function OrgRosterPage({ params }: { params: Promise<{ slug
             </button>
           </form>
           <p className="mt-3 text-[11px] text-faint">
-            One at a time, for now. Importing a whole roster from a spreadsheet is next.
+            Or{' '}
+            <Link
+              href={`/app/org/${org.slug}/import`}
+              className="text-accent underline underline-offset-2"
+            >
+              import a whole roster
+            </Link>{' '}
+            from a spreadsheet.
           </p>
         </section>
       </div>

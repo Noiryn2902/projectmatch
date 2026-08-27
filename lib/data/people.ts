@@ -121,6 +121,54 @@ export async function addPerson(
 }
 
 /**
+ * Adds many people to a roster in one insert.
+ *
+ * Same RLS as addPerson — the `people_insert` policy lets an org admin write
+ * rows for the org and nobody else — so a non-admin caller gets a clean
+ * refusal from the database rather than a partial import. Deliberately not a
+ * SECURITY DEFINER function: there is no bootstrapping deadlock here the way
+ * there was for creating an org, so ordinary RLS is the right and only gate.
+ */
+export async function importPeople(
+  orgId: string,
+  rows: {
+    name: string;
+    title?: string;
+    email?: string;
+    department?: string;
+    office?: string;
+    hoursPerWeek?: number;
+    seniority?: number;
+  }[],
+): Promise<number> {
+  if (rows.length === 0) return 0;
+
+  const supabase = await createServerSupabase();
+  const { error, count } = await supabase.from('people').insert(
+    rows.map((r) => ({
+      org_id: orgId,
+      name: r.name,
+      title: r.title ?? '',
+      email: r.email || null,
+      department: r.department ?? '',
+      office: r.office ?? '',
+      hours_per_week: r.hoursPerWeek ?? 0,
+      seniority: r.seniority ?? 1,
+    })),
+    { count: 'exact' },
+  );
+
+  if (error) {
+    if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
+      throw new Error('Only an organisation admin can import a roster.');
+    }
+    throw new Error('Could not import the roster: ' + error.message);
+  }
+
+  return count ?? rows.length;
+}
+
+/**
  * A specific set of people, in no particular order. Built for the projects
  * repository — resolving who fills each seat — so that seam has exactly one
  * place doing the row-to-Person mapping rather than a second copy of it.

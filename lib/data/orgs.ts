@@ -2,7 +2,7 @@ import 'server-only';
 
 import { hasDatabase } from '../env';
 import companiesSeed from '../seed/companies.json';
-import { createServerSupabase } from '../supabase/server';
+import { createServerSupabase, getCurrentUser } from '../supabase/server';
 import type { Company, Org } from '../types';
 
 /**
@@ -86,6 +86,32 @@ export async function getOrgBySlug(slug: string): Promise<Org | null> {
 
   if (error) throw new Error('Could not load the organisation: ' + error.message);
   return data ? toOrg(data as OrgRow) : null;
+}
+
+export type OrgRole = 'owner' | 'admin' | 'member';
+
+/**
+ * The signed-in user's role in an org, or null if they are not a member (or
+ * not signed in). Used to decide whether to show admin-only paths like roster
+ * import before the database would refuse the write anyway — the refusal is
+ * still the real gate, this just avoids walking someone into a dead end.
+ */
+export async function getMyRole(orgId: string): Promise<OrgRole | null> {
+  if (!hasDatabase) return null;
+
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('org_id', orgId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (error) throw new Error('Could not load your membership: ' + error.message);
+  return data ? (data as { role: OrgRole }).role : null;
 }
 
 function slugify(name: string): string {
