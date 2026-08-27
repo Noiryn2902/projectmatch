@@ -163,3 +163,37 @@ export async function listProjects(orgId: string): Promise<ProjectSummary[]> {
     (r) => ({ id: r.id, orgId: r.org_id, name: r.name, status: r.status, createdAt: r.created_at }),
   );
 }
+
+/**
+ * The write path: turns a submitted brief into a real, persisted, linkable
+ * project inside a real org — through create_project(), see
+ * supabase/migrations/0003_create_project.sql for why this is one database
+ * function rather than four sequential inserts from here.
+ */
+export async function createProject(
+  orgId: string,
+  brief: Brief,
+  name = '',
+): Promise<string> {
+  const supabase = await createServerSupabase();
+
+  const { data, error } = await supabase.rpc('create_project', {
+    p_org_id: orgId,
+    p_name: name,
+    p_brief_text: brief.text,
+    p_duration_weeks: brief.durationWeeks,
+    p_domain: brief.domain,
+    p_roles: brief.roles.map((r) => ({
+      title: r.title,
+      hoursNeeded: r.hoursNeeded,
+      requirements: r.requirements.map((req) => ({
+        skillId: req.skillId,
+        minLevel: req.minLevel,
+        weight: req.weight,
+      })),
+    })),
+  });
+
+  if (error) throw new Error('Could not create the project: ' + error.message);
+  return data as string;
+}

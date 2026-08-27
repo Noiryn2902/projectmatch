@@ -412,6 +412,28 @@ count after the attempt was unchanged. RLS holds in both directions, not just th
 - Multiple orgs per user (an owner can currently only ever have the one `/app` redirects to)
 - No nav link anywhere points at `/app` yet — reachable only by URL, same as `/project/[id]`
 
+**Done (2026-08-27) — the write path on projects.** `/app/org/[slug]/new` submits a brief through
+the same deterministic `fallbackBrief()` parser the live builder falls back to, and
+`create_project()` (`supabase/migrations/0003_create_project.sql`) turns it into a real project —
+the row, every role, every requirement, and an open seat per role — in one atomic transaction. The
+org roster page now lists real projects with a link into each, closing the loop this phase set out
+to close: `/project/[id]`, built two slices ago against seeded data only, renders a project created
+live through the form exactly the same way, because it never knew the difference.
+
+Deliberately **not** a `SECURITY DEFINER` function like `create_org()` — there is no bootstrapping
+deadlock here, the caller is already a member by the time they reach this page, so it runs as
+`SECURITY INVOKER` and ordinary RLS is the real gate on every insert inside it, same as a raw
+insert from that user would face.
+
+Verified against the live database: created a project through the actual UI as the real GitHub
+account, confirmed all 4 roles, every requirement, and 4 open seats landed correctly in Postgres in
+one call; separately probed the function with a nonexistent org id and got a real foreign-key
+violation rather than a silent no-op, confirming the function's logic genuinely runs rather than
+just existing.
+
+Still open: no name field on project creation (`name` is always empty — the page uses the brief
+text as the title), and profile claiming / CSV import are unchanged from before this slice.
+
 ### Phase 2 — Invitations that leave the building
 
 - Invitation records with real email delivery, and a link that works before the recipient has an

@@ -1,16 +1,20 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import Avatar from '@/components/Avatar';
 import { getOrgBySlug } from '@/lib/data/orgs';
 import { listPeople } from '@/lib/data/people';
+import { listProjects } from '@/lib/data/projects';
 
 import { addPersonAction } from './actions';
 
 /**
- * The roster. Deliberately plain — a list and a one-row form — because the
- * point of this slice is proving the pipe works end to end (sign in, own an
- * org, grow its roster, have the database and RLS actually mean it) rather
- * than building the roster experience CSV import deserves. That is next.
+ * The org's home: its projects, and the roster they get staffed from.
+ * Deliberately plain — lists and one-row forms — because the point of this
+ * slice is proving the whole pipe works end to end (sign in, own an org,
+ * grow its roster, spin up a real project, have the database and RLS
+ * actually mean it) rather than building the polished version of any one
+ * part of it. CSV import and profile claiming are next.
  *
  * A 404 here does double duty: it is what a genuinely unknown slug produces,
  * and it is also what RLS silently returns for an org you are not a member
@@ -24,7 +28,7 @@ export default async function OrgRosterPage({ params }: { params: Promise<{ slug
   const org = await getOrgBySlug(slug);
   if (!org) notFound();
 
-  const people = await listPeople(org.id);
+  const [people, projects] = await Promise.all([listPeople(org.id), listProjects(org.id)]);
 
   return (
     <main className="pm-grain min-h-screen">
@@ -36,7 +40,41 @@ export default async function OrgRosterPage({ params }: { params: Promise<{ slug
 
       <div className="mx-auto max-w-[720px] px-5 py-10">
         <div className="flex items-baseline justify-between">
-          <h1 className="font-display text-lg font-semibold text-ink">Roster</h1>
+          <h1 className="font-display text-lg font-semibold text-ink">Projects</h1>
+          <Link
+            href={`/app/org/${org.slug}/new`}
+            className="rounded-full bg-accent px-3 py-1.5 text-[12px] font-medium text-panel transition-opacity hover:opacity-90"
+          >
+            New project
+          </Link>
+        </div>
+
+        <section className="mt-5 rounded-xl border border-line bg-panel">
+          {projects.length === 0 ? (
+            <p className="p-4 text-[13px] text-faint italic">No projects yet.</p>
+          ) : (
+            <ul>
+              {projects.map((proj) => (
+                <li key={proj.id} className="border-b border-line last:border-b-0">
+                  <Link
+                    href={`/project/${proj.id}`}
+                    className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-panel-2"
+                  >
+                    <span className="min-w-0 truncate text-[13px] font-medium">
+                      {proj.name || 'Untitled project'}
+                    </span>
+                    <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[11px] text-muted uppercase">
+                      {proj.status}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <div className="mt-10 flex items-baseline justify-between">
+          <h2 className="font-display text-lg font-semibold text-ink">Roster</h2>
           <span className="text-[12px] text-muted">
             {people.length} {people.length === 1 ? 'person' : 'people'}
           </span>
