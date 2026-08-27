@@ -120,43 +120,50 @@ export async function addPerson(
   if (error) throw new Error('Could not add person: ' + error.message);
 }
 
+export interface ImportRow {
+  name: string;
+  title?: string;
+  email?: string;
+  department?: string;
+  office?: string;
+  hoursPerWeek?: number;
+  seniority?: number;
+  skills?: { skillId: string; level: number }[];
+}
+
 /**
- * Adds many people to a roster in one insert.
+ * Adds many people to a roster in one insert, plus their skills in a second.
  *
- * Same RLS as addPerson — the `people_insert` policy lets an org admin write
- * rows for the org and nobody else — so a non-admin caller gets a clean
- * refusal from the database rather than a partial import. Deliberately not a
- * SECURITY DEFINER function: there is no bootstrapping deadlock here the way
- * there was for creating an org, so ordinary RLS is the right and only gate.
+ * Same RLS as addPerson — the `people_insert` and `person_skills_write`
+ * policies let an org admin write for the org and nobody else — so a
+ * non-admin caller gets a clean refusal rather than a partial import.
+ * Deliberately not a SECURITY DEFINER function: there is no bootstrapping
+ * deadlock here the way there was for creating an org, so ordinary RLS is
+ * the right and only gate.
+ *
+ * Skills land with `provenance = 'self'` and `source = 'roster import'` — an
+ * admin pasting a spreadsheet is asserting a level, not verifying it, and
+ * the engine's `skillTrust` already discounts exactly that.
  */
-export async function importPeople(
-  orgId: string,
-  rows: {
-    name: string;
-    title?: string;
-    email?: string;
-    department?: string;
-    office?: string;
-    hoursPerWeek?: number;
-    seniority?: number;
-  }[],
-): Promise<number> {
+export async function importPeople(orgId: string, rows: ImportRow[]): Promise<number> {
   if (rows.length === 0) return 0;
 
   const supabase = await createServerSupabase();
-  const { error, count } = await supabase.from('people').insert(
-    rows.map((r) => ({
-      org_id: orgId,
-      name: r.name,
-      title: r.title ?? '',
-      email: r.email || null,
-      department: r.department ?? '',
-      office: r.office ?? '',
-      hours_per_week: r.hoursPerWeek ?? 0,
-      seniority: r.seniority ?? 1,
-    })),
-    { count: 'exact' },
-  );
+  const { data: inserted, error } = await supabase
+    .from('people')
+    .insert(
+      rows.map((r) => ({
+        org_id: orgId,
+        name: r.name,
+        title: r.title ?? '',
+        email: r.email || null,
+        department: r.department ?? '',
+        office: r.office ?? '',
+        hours_per_week: r.hoursPerWeek ?? 0,
+        seniority: r.seniority ?? 1,
+      })),
+    )
+    .select('id, name');
 
   if (error) {
     if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
@@ -165,7 +172,31 @@ export async function importPeople(
     throw new Error('Could not import the roster: ' + error.message);
   }
 
-  return count ?? rows.length;
+  const created = (inserted ?? []) as { id: string; name: string }[];
+
+  // Attribute skills by name — the caller has already de-duplicated names
+  // within the batch, so this mapping is unambiguous for these rows.
+  const idByName = new Map(created.map((p) => [p.name.toLowerCase(), p.id]));
+  const skillRows = rows.flatMap((r) => {
+    const personId = idByName.get(r.name.toLowerCase());
+    if (!personId || !r.skills?.length) return [];
+    return r.skills.map((s) => ({
+      person_id: personId,
+      skill_id: s.skillId,
+      level: s.level,
+      provenance: 'self' as const,
+      source: 'roster import',
+    }));
+  });
+
+  if (skillRows.length > 0) {
+    const { error: skillErr } = await supabase.from('person_skills').insert(skillRows);
+    // A person with no skills is still a real roster entry — do not fail the
+    // whole import over the skills half, but do surface it.
+    if (skillErr) throw new Error('People were added, but their skills were not: ' + skillErr.message);
+  }
+
+  return created.length;
 }
 
 /**

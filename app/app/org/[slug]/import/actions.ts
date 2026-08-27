@@ -40,6 +40,7 @@ export async function commitImportAction(formData: FormData) {
       office: r.office,
       hoursPerWeek: r.hoursPerWeek,
       seniority: r.seniority,
+      skills: r.skills,
     }));
 
   const added = await importPeople(orgId, toInsert);

@@ -586,6 +586,37 @@ is what runs until then.
 - The scoring engine discounts unverified levels, and the interface says so.
 - **No scraping.** GitHub's public API and a person's own export only.
 
+**Done (2026-08-27) — the engine discounts what it cannot verify, and imported people carry
+skills.** Two halves that prove each other.
+
+*Engine.* `satisfaction()` in `lib/engine/score.ts` — the one function where a stated level becomes
+coverage — now multiplies the level by `skillTrust(ps)` before measuring it against the bar.
+`verified` → 1.0, `endorsed` → 0.9, `extracted` → 0.75, `self` → 0.6. A level with **no**
+provenance is left at 1.0 on purpose: the seeded pool predates the field, and reading "unknown" as
+"unverified" would move every number in the live demo and the 0% / 12% proof. Recency
+(`last_used_at`) is deliberately *not* in yet — it needs a clock, and `Date.now()` inside a
+function the tests assert is deterministic is the wrong trade for one slice; it comes when the
+`now` param can be threaded through properly. 6 new assertions; the suite is 57/57 and every
+pre-existing invariant still holds unchanged, which is the point.
+
+*Import.* The roster paste takes a `skills` column now — one quoted cell like
+`"react:4, postgres:3, nodejs"`. `parseSkillCell()` (pure, in `lib/import/roster.ts`) splits on
+`, ; |`, reads a trailing 1–5 as the level (default 3), resolves each name against the 82-skill
+vocabulary via `resolveSkill`, and hands back anything it does not recognise rather than guessing.
+`importPeople()` writes them with `provenance = 'self'`, `source = 'roster import'` in a second
+batch insert under the `person_skills_write` RLS policy — so an imported person is immediately
+rankable, at the discounted trust the engine applies to a self-reported level. The import page and
+preview say so in as many words. 12 new parser assertions (`test:import` now 34).
+
+`npm run verify` green: typecheck + lint + 57 engine + 34 import + 9 email + build. No migration —
+`person_skills` already had `provenance` and `source`.
+
+**Not verified live** — needs an admin to paste a roster with skills and confirm the `person_skills`
+rows land and the people then appear in a ranking (discounted). **Still open in Phase 3:** resume /
+GitHub import as an AI action, recency, endorsements, and any interface marker on a candidate row
+showing *which* of their covering skills are unverified (the import page explains the idea, the
+ranking pages do not surface it per-person yet).
+
 ### Phase 3.5 — The engine phase
 
 §6 items. Recommended core: **6.1 capacity conflicts, 6.2 bus factor, 6.3 options with tradeoffs,

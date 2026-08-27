@@ -17,6 +17,7 @@ import {
   coverage,
   marginalGain,
   satisfaction,
+  skillTrust,
   teamOverlapHours,
 } from '../lib/engine/score';
 import { labelOf, resolveSkill, sim } from '../lib/engine/graph';
@@ -77,6 +78,36 @@ check(
   'this cap is what keeps coverage honest',
 );
 check('an unrelated person covers nothing', satisfaction({ ...pool[0], skills: [{ skillId: 'ui-design', level: 5 }] }, req) === 0);
+
+// ------------------------------------------------------------------ skill trust
+
+group('Skill trust: an unverified level is a claim, not a measurement');
+check('a verified level is taken whole', skillTrust({ skillId: 'react', level: 5, provenance: 'verified' }) === 1);
+check('a self-reported level is discounted', skillTrust({ skillId: 'react', level: 5, provenance: 'self' }) < 1);
+check(
+  'endorsed sits above extracted sits above self',
+  skillTrust({ skillId: 'react', level: 5, provenance: 'endorsed' }) >
+    skillTrust({ skillId: 'react', level: 5, provenance: 'extracted' }) &&
+    skillTrust({ skillId: 'react', level: 5, provenance: 'extracted' }) >
+      skillTrust({ skillId: 'react', level: 5, provenance: 'self' }),
+);
+check(
+  'missing provenance is left alone — the seeded pool must not move',
+  skillTrust({ skillId: 'react', level: 5 }) === 1,
+);
+const topBar = { skillId: 'react', minLevel: 5, weight: 1 };
+check(
+  'against a top-level bar, the discount lowers what a self-reported five covers',
+  satisfaction({ ...pool[0], skills: [{ skillId: 'react', level: 5, provenance: 'self' }] }, topBar) <
+    satisfaction({ ...pool[0], skills: [{ skillId: 'react', level: 5, provenance: 'verified' }] }, topBar),
+);
+check(
+  'a discounted five still fully clears a mid bar',
+  satisfaction(
+    { ...pool[0], skills: [{ skillId: 'react', level: 5, provenance: 'self' }] },
+    { skillId: 'react', minLevel: 3, weight: 1 },
+  ) === 1,
+);
 
 // --------------------------------------------------------------------- coverage
 

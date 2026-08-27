@@ -36,7 +36,12 @@ export type SkillProvenance = 'self' | 'extracted' | 'endorsed' | 'verified';
 export interface PersonSkill {
   skillId: SkillId;
   level: number;
-  /** Absent in seeded data, which predates the field. Read as 'self'. */
+  /**
+   * Who asserted the level. Absent in seeded data, which predates the field —
+   * the engine leaves an absent value at full trust and only discounts an
+   * explicit one, so the demo pool is unaffected. See `skillTrust` in
+   * lib/engine/score.ts.
+   */
   provenance?: SkillProvenance;
   /** ISO date. A skill last used four years ago is not a current skill. */
   lastUsedAt?: string;

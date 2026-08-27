@@ -1,7 +1,29 @@
-import type { Brief, Person, Requirement, Role, ScoreBreakdown } from '../types';
+import type { Brief, Person, PersonSkill, Requirement, Role, ScoreBreakdown, SkillProvenance } from '../types';
 import { sim } from './graph';
 
 const clamp = (n: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, n));
+
+/**
+ * How much to believe a stated skill level, 0..1, from who asserted it.
+ * A level nobody has corroborated is a claim, not a measurement, so the
+ * engine scales it down rather than trusting it whole — this is what keeps
+ * "everyone is a five" from quietly turning the scoring into noise once real
+ * people fill their own profiles in.
+ *
+ * Missing provenance is left at full trust on purpose. The seeded demo data
+ * predates the field, and reading "unknown" as "unverified" would move every
+ * number in the live demo. Only an explicit provenance is ever discounted.
+ */
+const PROVENANCE_TRUST: Record<SkillProvenance, number> = {
+  verified: 1,
+  endorsed: 0.9,
+  extracted: 0.75,
+  self: 0.6,
+};
+
+export function skillTrust(ps: PersonSkill): number {
+  return ps.provenance ? PROVENANCE_TRUST[ps.provenance] : 1;
+}
 
 /** How well one person satisfies one requirement, 0..1. */
 export function satisfaction(person: Person, req: Requirement): number {
@@ -9,9 +31,11 @@ export function satisfaction(person: Person, req: Requirement): number {
   for (const ps of person.skills) {
     const s = sim(ps.skillId, req.skillId);
     if (s === 0) continue;
-    // Level clears the bar first, then similarity scales it. A merely
+    // Discount an unverified level before it is measured against the bar,
+    // then let level clear the bar, then similarity scales it. A merely
     // adjacent skill can never count as fully covering the requirement.
-    const v = clamp(Math.min(ps.level / req.minLevel, 1) * s);
+    const level = ps.level * skillTrust(ps);
+    const v = clamp(Math.min(level / req.minLevel, 1) * s);
     if (v > best) best = v;
   }
   return best;

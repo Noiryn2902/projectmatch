@@ -45,7 +45,10 @@ export default async function ImportRosterPage({ params }: { params: Promise<{ s
         <p className="mt-2 text-[12px] text-muted">
           Paste rows from Excel, Google Sheets, or a CSV export. Keep the header row — a{' '}
           <code className="text-accent">name</code> column is all that is required. Recognised
-          alongside it: title, email, department, office, hours, seniority.
+          alongside it: title, email, department, office, hours, seniority, and{' '}
+          <code className="text-accent">skills</code> (one quoted cell like{' '}
+          <span className="text-faint">&ldquo;react:4, postgres:3&rdquo;</span>, matched against the
+          82-skill vocabulary).
         </p>
 
         <ImportForm orgId={org.id} slug={slug} existingNames={existingNames} />

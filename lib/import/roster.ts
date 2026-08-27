@@ -6,9 +6,19 @@
  * server at commit time — because the parsed rows a client sends back are not
  * to be trusted, only the raw text is. Everything here is a plain function
  * over strings, which is also what makes it testable without a database.
+ *
+ * The one dependency is the skill vocabulary (`resolveSkill`), which is
+ * itself pure — a `skills` column is matched against the 82-skill graph and
+ * anything it does not recognise is dropped and reported, never invented.
  */
+import { resolveSkill } from '../engine/graph';
 
 export type RowStatus = 'ok' | 'dup-file' | 'dup-roster' | 'invalid';
+
+export interface ParsedSkill {
+  skillId: string;
+  level: number;
+}
 
 export interface ParsedPerson {
   name: string;
@@ -18,6 +28,14 @@ export interface ParsedPerson {
   office: string;
   hoursPerWeek: number;
   seniority: number;
+  /**
+   * Recognised skills from a `skills` column. Written with `provenance:
+   * 'self'` on import — an admin pasting a spreadsheet is asserting, not
+   * verifying — so the engine already discounts them.
+   */
+  skills: ParsedSkill[];
+  /** Skill words in the paste that matched nothing in the vocabulary. */
+  unknownSkills: string[];
   status: RowStatus;
   /** Why a row is not `ok`, or a soft warning on one that still is. */
   note: string;
@@ -41,6 +59,7 @@ const HEADER_ALIASES: Record<keyof PersonFields, string[]> = {
   office: ['office', 'location', 'site', 'city'],
   hoursPerWeek: ['hours', 'hrs', 'hours per week', 'hours/week', 'hoursperweek', 'capacity'],
   seniority: ['seniority', 'level', 'grade'],
+  skills: ['skills', 'skill', 'expertise', 'stack', 'tech'],
 };
 
 interface PersonFields {
@@ -51,6 +70,40 @@ interface PersonFields {
   office: string;
   hoursPerWeek: string;
   seniority: string;
+  skills: string;
+}
+
+/**
+ * Reads one spreadsheet cell of skills — `react:4, node.js 3; sql` — into
+ * recognised ids with a level each. Separators are comma, semicolon or pipe;
+ * a level is a trailing 1–5 after a space, colon or parenthesis, defaulting
+ * to 3. Unrecognised words are handed back, not guessed at.
+ */
+export function parseSkillCell(cell: string): { skills: ParsedSkill[]; unknown: string[] } {
+  const skills: ParsedSkill[] = [];
+  const unknown: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of cell.split(/[,;|]/)) {
+    const token = raw.trim();
+    if (!token) continue;
+
+    const m = token.match(/^(.*?)[\s:(]+([1-5])\s*\)?$/);
+    const namePart = (m ? m[1] : token).trim();
+    const level = m ? Number(m[2]) : 3;
+    if (!namePart) continue;
+
+    const id = resolveSkill(namePart);
+    if (!id) {
+      unknown.push(namePart);
+      continue;
+    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+    skills.push({ skillId: id, level });
+  }
+
+  return { skills, unknown };
 }
 
 /**
@@ -161,6 +214,7 @@ export function normaliseRoster(text: string, existingNames: Set<string> = new S
       office: '',
       hoursPerWeek: '',
       seniority: '',
+      skills: '',
     };
     mapping.forEach((key, i) => {
       if (key) f[key] = (raw[i] ?? '').trim();
@@ -169,22 +223,34 @@ export function normaliseRoster(text: string, existingNames: Set<string> = new S
     const name = f.name;
     const hoursInt = f.hoursPerWeek ? toInt(f.hoursPerWeek) : null;
     const seniorityInt = f.seniority ? toInt(f.seniority) : null;
+    const { skills, unknown: unknownSkills } = f.skills
+      ? parseSkillCell(f.skills)
+      : { skills: [], unknown: [] };
 
     let status: RowStatus = 'ok';
-    let note = '';
+    const notes: string[] = [];
 
     if (!name) {
       status = 'invalid';
-      note = 'no name in this row';
+      notes.push('no name in this row');
     } else if (existingNames.has(name.toLowerCase())) {
       status = 'dup-roster';
-      note = 'already on the roster';
+      notes.push('already on the roster');
     } else if (seenInFile.has(name.toLowerCase())) {
       status = 'dup-file';
-      note = 'appears more than once here';
+      notes.push('appears more than once here');
     } else if (f.email && !f.email.includes('@')) {
-      note = 'email looks off — will still import';
+      notes.push('email looks off — will still import');
     }
+
+    if (status === 'ok' && skills.length > 0) {
+      notes.push(`${skills.length} skill${skills.length === 1 ? '' : 's'}`);
+    }
+    if (status === 'ok' && unknownSkills.length > 0) {
+      notes.push(`${unknownSkills.length} skill word${unknownSkills.length === 1 ? '' : 's'} not recognised`);
+    }
+
+    const note = notes.join(' · ');
 
     if (name) seenInFile.add(name.toLowerCase());
 
@@ -201,6 +267,8 @@ export function normaliseRoster(text: string, existingNames: Set<string> = new S
       office: f.office,
       hoursPerWeek: hoursInt === null ? 0 : clamp(hoursInt, 0, 40),
       seniority: seniorityInt === null ? 1 : clamp(seniorityInt, 1, 5),
+      skills,
+      unknownSkills,
       status,
       note,
     });

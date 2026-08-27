@@ -6,11 +6,11 @@ import { normaliseRoster, type RowStatus } from '@/lib/import/roster';
 
 import { commitImportAction } from './actions';
 
-const SAMPLE = `name,title,department,office,hours,seniority,email
-Rhea Menon,Staff Backend Engineer,Platform,Bengaluru,32,5,rhea@example.com
-Daniel Okafor,Product Designer,Design,Remote,24,3,daniel@example.com
-Ana Costa,Data Scientist,Insights,Lisbon,40,4,ana@example.com
-Wei Zhang,Frontend Engineer,Web,Singapore,30,2,wei@example.com`;
+const SAMPLE = `name,title,department,office,hours,seniority,email,skills
+Rhea Menon,Staff Backend Engineer,Platform,Bengaluru,32,5,rhea@example.com,"api design:5, postgres:4, nodejs:4"
+Daniel Okafor,Product Designer,Design,Remote,24,3,daniel@example.com,"ui design:4, figma:3, css:2"
+Ana Costa,Data Scientist,Insights,Lisbon,40,4,ana@example.com,"python:5, nlp:4, sql:4"
+Wei Zhang,Frontend Engineer,Web,Singapore,30,2,wei@example.com,"react:3, typescript:3, css:3"`;
 
 const ROW_TINT: Record<RowStatus, string> = {
   ok: '',
@@ -111,6 +111,7 @@ export default function ImportForm({
                   <th className="px-3 py-2 font-medium">Dept</th>
                   <th className="px-3 py-2 font-medium">Hrs</th>
                   <th className="px-3 py-2 font-medium">Lvl</th>
+                  <th className="px-3 py-2 font-medium">Skills</th>
                   <th className="px-3 py-2 font-medium">Note</th>
                 </tr>
               </thead>
@@ -122,6 +123,7 @@ export default function ImportForm({
                     <td className="px-3 py-1.5">{r.department}</td>
                     <td className="px-3 py-1.5 tabular-nums">{r.hoursPerWeek}</td>
                     <td className="px-3 py-1.5 tabular-nums">{r.seniority}</td>
+                    <td className="px-3 py-1.5 tabular-nums text-faint">{r.skills.length || ''}</td>
                     <td className="px-3 py-1.5 text-faint">{r.note}</td>
                   </tr>
                 ))}
@@ -142,8 +144,9 @@ export default function ImportForm({
             {ok === 0 ? 'Nothing to import' : `Import ${ok} ${ok === 1 ? 'person' : 'people'}`}
           </button>
           <p className="mt-2 text-[11px] text-faint">
-            Rows already on the roster or repeated in the paste are skipped, not merged. Skill
-            levels, timezones and availability come later — claim-your-profile is the next slice.
+            Rows already on the roster or repeated in the paste are skipped, not merged. Imported
+            skill levels are treated as self-reported — the engine trusts them less than a level a
+            colleague has endorsed or the org has verified.
           </p>
         </>
       )}

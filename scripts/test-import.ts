@@ -8,7 +8,7 @@
  *
  *   npx tsx scripts/test-import.ts
  */
-import { normaliseRoster, parseDelimited } from '../lib/import/roster';
+import { normaliseRoster, parseDelimited, parseSkillCell } from '../lib/import/roster';
 
 let passed = 0;
 const failures: string[] = [];
@@ -91,6 +91,31 @@ check(
 
 const soft = normaliseRoster(`name,email\nJo,not-an-email`);
 check('a malformed email warns but still imports', soft.rows[0].status === 'ok' && soft.rows[0].note !== '');
+
+// -------------------------------------------------------------------- skills
+
+group('Skill cells');
+
+const sc = parseSkillCell('react:4, node.js 3; sql');
+check('a colon level is read', sc.skills.some((s) => s.skillId === 'react' && s.level === 4));
+check('a space level is read', sc.skills.some((s) => s.skillId === 'nodejs' && s.level === 3));
+check('a bare skill defaults to level 3', sc.skills.some((s) => s.skillId === 'sql' && s.level === 3));
+check('an alias resolves to its canonical id', !sc.skills.some((s) => s.skillId === 'node.js'));
+
+const sc2 = parseSkillCell('React, react 5, quidditch, ');
+check('a repeated skill is only counted once', sc2.skills.filter((s) => s.skillId === 'react').length === 1);
+check('an unknown word is reported, not guessed', sc2.unknown.includes('quidditch'));
+check('an empty token is skipped', sc2.skills.length === 1);
+
+const withSkills = normaliseRoster(
+  `name,skills
+Nadia,"typescript:5, postgres:3, wizardry"`,
+);
+check('recognised skills ride along on the row', withSkills.rows[0].skills.length === 2);
+check('the skills column is recognised', withSkills.recognised.includes('skills'));
+check('unrecognised skill words are held on the row', withSkills.rows[0].unknownSkills.includes('wizardry'));
+check('the row note counts the skills', withSkills.rows[0].note.includes('2 skills'));
+check('a row with skills is still importable', withSkills.rows[0].status === 'ok');
 
 check('text with no data rows yields nothing', normaliseRoster('name,title').rows.length === 0);
 check('empty input yields nothing', normaliseRoster('').rows.length === 0);
