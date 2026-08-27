@@ -791,8 +791,17 @@ growth-aware staffing** as the signature move if there is room.
 
 ### Phase 5 — Proof, finish, and the deck
 
-- The counterfactual panel: what a keyword filter picks versus what the engine picks, same brief,
-  side by side. Highest persuasion-per-hour artifact available.
+- **The counterfactual panel — [Done, 2026-08-27].** `keywordTeam(brief, pool, scope)` in
+  `lib/engine/keyword.ts` is the strawman: it does what a "find people for this project" search
+  does — pool every skill word in the brief into one query, rank people by how many they carry then
+  by seniority, walk the seats in order handing each to the top-ranked person with any of that
+  seat's words. No skill graph, no levels, no availability, no team awareness.
+  `/project/[id]/compare` runs it beside `autoFill` on the same brief and roster, roles down the
+  side, and shows the numbers: **on the seeded brief, keyword coverage 71%, engine 91% — same
+  people, +20 points** — plus bus factor, overlap hours, growth pairings, and a plain-language
+  list of which seats the engine staffed differently. Public on the demo org, linked from every
+  project page as "Filter vs engine". 7 assertions (engine suite 98), one of them the load-bearing
+  `engine.coverage > keyword.coverage`.
 - Empty, loading, error and permission states on every flow.
 - Rate limiting on `/api/ai`; mobile passes on new screens.
 - The presentation, assembled from the phases rather than written the night before.

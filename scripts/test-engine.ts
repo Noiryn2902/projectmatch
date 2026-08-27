@@ -14,6 +14,7 @@ import { autoFill, membersOf, rankCandidates } from '../lib/engine/assemble';
 import { diagnoseRole } from '../lib/engine/feasibility';
 import { stretchCount, stretchPairs } from '../lib/engine/growth';
 import { teamHealth } from '../lib/engine/health';
+import { keywordTeam } from '../lib/engine/keyword';
 import { proposeTeams } from '../lib/engine/options';
 import {
   allRequirements,
@@ -437,6 +438,43 @@ check('a resilient option never has a worse bus factor than best-coverage', (() 
   const r = opts.find((o) => o.key === 'resilient');
   return !r || r.busFactor >= opts[0].busFactor;
 })());
+
+// -------------------------------------------------- keyword filter counterfactual
+
+group('Counterfactual: the engine beats a keyword filter on the same brief');
+
+const kwTeam = keywordTeam(brief, pool, scope);
+const enTeam = autoFill(brief, pool, scope);
+const kwHealth = teamHealth(brief, membersOf(kwTeam, pool), brief.roles.length);
+const enHealth = teamHealth(brief, membersOf(enTeam, pool), brief.roles.length);
+
+check('the keyword filter returns one person per role key', Object.keys(kwTeam).length === brief.roles.length);
+check('the keyword filter never seats anyone twice', (() => {
+  const ids = Object.values(kwTeam).filter(Boolean);
+  return new Set(ids).size === ids.length;
+})());
+check('the keyword filter is deterministic', JSON.stringify(keywordTeam(brief, pool, scope)) === JSON.stringify(kwTeam));
+check('everyone the filter seats actually has one of the seat words', (() => {
+  for (const role of brief.roles) {
+    const id = kwTeam[role.id];
+    if (!id) continue;
+    const p = pool.find((x) => x.id === id)!;
+    const wanted = new Set(role.requirements.map((r) => r.skillId));
+    if (!p.skills.some((s) => wanted.has(s.skillId))) return false;
+  }
+  return true;
+})());
+check(
+  'the engine covers at least as much of the brief as the filter, for the same roster',
+  enHealth.coverage >= kwHealth.coverage,
+  'this is the counterfactual the compare page rests on',
+);
+check(
+  'on the demo brief the engine is strictly ahead',
+  enHealth.coverage > kwHealth.coverage + 0.05,
+  'the two should visibly differ, not tie',
+);
+check('the two produce different teams', JSON.stringify(kwTeam) !== JSON.stringify(enTeam));
 
 // -------------------------------------------------------------- brief reading
 
