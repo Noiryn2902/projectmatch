@@ -6,12 +6,18 @@ import Avatar from '@/components/Avatar';
 import { buttonClass, toneForRatio } from '@/components/ui';
 import { hasDatabase } from '@/lib/env';
 import { getDemoOrg } from '@/lib/data/orgs';
-import { listPendingInvitations } from '@/lib/data/invitations';
+import { listInvitationTiles } from '@/lib/data/invitations';
 import { chatIsOpen, listMessages } from '@/lib/data/messages';
 import { getProject } from '@/lib/data/projects';
 import { labelOf } from '@/lib/engine/graph';
+import type { Person } from '@/lib/types';
 
-import { postMessageAction, revokeInvitationAction } from './actions';
+import {
+  deleteProjectAction,
+  postMessageAction,
+  renameProjectAction,
+  revokeInvitationAction,
+} from './actions';
 
 /**
  * The first real, URL-addressable project page.
@@ -31,10 +37,16 @@ export default async function ProjectPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ invited?: string; emailed?: string; revoked?: string }>;
+  searchParams: Promise<{
+    invited?: string;
+    emailed?: string;
+    revoked?: string;
+    created?: string;
+    renamed?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { invited, emailed, revoked } = await searchParams;
+  const { invited, emailed, revoked, created, renamed } = await searchParams;
 
   if (!hasDatabase) {
     // Nothing before this route had a concept of a persisted project — there
@@ -63,7 +75,7 @@ export default async function ProjectPage({
   const demoOrg = await getDemoOrg();
   const readOnly = demoOrg !== null && project.orgId === demoOrg.id;
 
-  const pending = readOnly ? [] : await listPendingInvitations(project.id);
+  const invitations = readOnly ? [] : await listInvitationTiles(project.id);
   const chatOpen = chatIsOpen(project.members);
   const messages = chatOpen ? await listMessages(project.id) : [];
 
@@ -83,9 +95,28 @@ export default async function ProjectPage({
       }
     >
       <div>
-        <p className="text-[11px] tracking-wide text-faint uppercase">
-          {project.name || 'Untitled project'}
-        </p>
+        {/* The name was a static uppercase label, so a project created from a
+            brief was stuck as "Untitled project" forever. It is the field
+            itself now — type, press enter, done. */}
+        {readOnly ? (
+          <p className="text-[11px] tracking-wide text-faint uppercase">
+            {project.name || 'Untitled project'}
+          </p>
+        ) : (
+          <form action={renameProjectAction} className="flex items-center gap-2">
+            <input type="hidden" name="projectId" value={project.id} />
+            <input
+              name="name"
+              defaultValue={project.name}
+              placeholder="Name this project"
+              aria-label="Project name"
+              className="-ml-2 min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1 text-[11px] tracking-wide text-faint uppercase outline-none transition-colors hover:border-line focus:border-accent focus:text-ink"
+            />
+            <button type="submit" className="shrink-0 text-[11px] text-accent hover:underline">
+              Save
+            </button>
+          </form>
+        )}
         <h1 className="mt-1 max-w-[46ch] font-display text-2xl font-bold text-balance">
           {brief.text}
         </h1>
@@ -112,7 +143,33 @@ export default async function ProjectPage({
               Review every seat
             </Link>
           )}
+          {!readOnly && (
+            <form action={deleteProjectAction} className="ml-auto">
+              <input type="hidden" name="projectId" value={project.id} />
+              <button
+                type="submit"
+                className="rounded-lg px-3 py-1.5 text-[12px] text-faint transition-colors hover:text-warn"
+              >
+                Delete project
+              </button>
+            </form>
+          )}
         </div>
+
+        {created && (
+          <div className="mt-6 rounded-xl border border-line border-l-2 border-l-good bg-panel px-4 py-3.5">
+            <p className="text-[13px] font-medium text-ink">This project is real now.</p>
+            <p className="mt-1 text-[12px] text-muted">
+              Open a seat to invite someone from your own roster.
+            </p>
+          </div>
+        )}
+
+        {renamed && (
+          <div className="mt-6 rounded-xl border border-line border-l-2 border-l-good bg-panel px-4 py-3 text-[13px] text-ink">
+            Renamed.
+          </div>
+        )}
 
         {invited && (
           <div className="mt-6 rounded-xl border border-line border-l-2 border-l-accent bg-panel px-4 py-3.5">
@@ -314,45 +371,67 @@ export default async function ProjectPage({
           </aside>
         </div>
 
-        {pending.length > 0 && (
+        {/*
+          Who was asked, and what they said. This lived in three places —
+          a pending list, a decline map, and the seat rows — which is three
+          places to look for one question. One grid of tiles, one answer,
+          the status as a chip rather than a sentence.
+        */}
+        {invitations.length > 0 && (
           <section className="mt-8">
-            <h2 className="font-display text-[15px] font-semibold text-ink">Awaiting a reply</h2>
-            <p className="mt-1 text-[12px] text-muted">
-              Held, not filled. Withdrawing reopens the seat.
-            </p>
-            <ul className="mt-3 rounded-xl border border-line bg-panel">
-              {pending.map((inv) => (
+            <h2 className="font-display text-[15px] font-semibold text-ink">Invitations</h2>
+            <ul className="mt-3 grid gap-2.5 sm:grid-cols-2">
+              {invitations.map((inv) => (
                 <li
                   key={inv.token}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3 last:border-b-0"
+                  className="flex items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3"
                 >
+                  <Avatar
+                    person={
+                      {
+                        name: inv.personName,
+                        hue: inv.personHue,
+                        ...(inv.personPhoto ? { photo: inv.personPhoto } : {}),
+                      } as Person
+                    }
+                    size={36}
+                  />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium">
-                      {inv.personName}{' '}
-                      <span className="font-normal text-muted">&middot; {inv.roleTitle}</span>
-                    </p>
-                    {/* The raw token used to be printed here in full. It is a
-                        credential, it means nothing to a reader, and it made
-                        every row look like a stack trace. The status is what
-                        the owner actually needs; the link belongs in the
-                        email that was sent. */}
-                    <p className="mt-0.5 text-[12px] text-muted">
-                      Invitation sent &middot; awaiting their answer
-                    </p>
+                    <p className="truncate text-[13px] font-medium text-ink">{inv.personName}</p>
+                    <p className="truncate text-[12px] text-muted">{inv.roleTitle}</p>
+                    {inv.personEmail && (
+                      <p className="truncate text-[11px] text-faint">{inv.personEmail}</p>
+                    )}
                   </div>
-                  <span className="shrink-0 text-[11px] text-faint">
-                    expires {new Date(inv.expiresAt).toLocaleDateString()}
-                  </span>
-                  <form action={revokeInvitationAction} className="shrink-0">
-                    <input type="hidden" name="projectId" value={project.id} />
-                    <input type="hidden" name="roleId" value={inv.roleId} />
-                    <button
-                      type="submit"
-                      className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted transition-colors hover:border-warn/40 hover:text-warn"
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                        inv.status === 'accepted'
+                          ? 'border-good/40 text-good'
+                          : inv.status === 'declined'
+                            ? 'border-warn/40 text-warn'
+                            : 'border-line text-faint'
+                      }`}
                     >
-                      Withdraw
-                    </button>
-                  </form>
+                      {inv.status === 'accepted'
+                        ? 'Accepted'
+                        : inv.status === 'declined'
+                          ? 'Declined'
+                          : 'Sent'}
+                    </span>
+                    {inv.status === 'sent' && !readOnly && (
+                      <form action={revokeInvitationAction}>
+                        <input type="hidden" name="projectId" value={project.id} />
+                        <input type="hidden" name="roleId" value={inv.roleId} />
+                        <button
+                          type="submit"
+                          className="text-[11px] text-muted transition-colors hover:text-warn"
+                        >
+                          Withdraw
+                        </button>
+                      </form>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

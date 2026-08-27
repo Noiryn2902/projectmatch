@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 
 import { revokeInvitation } from '@/lib/data/invitations';
 import { postMessage } from '@/lib/data/messages';
+import { deleteProject, renameProject } from '@/lib/data/projects';
 
 /**
  * Withdraws a pending invitation from the project page's management list and
@@ -34,4 +35,26 @@ export async function postMessageAction(formData: FormData) {
   await postMessage(projectId, body);
 
   revalidatePath('/project/[id]', 'page');
+}
+
+/** Renames the project from the inline field in its header. */
+export async function renameProjectAction(formData: FormData) {
+  const projectId = String(formData.get('projectId') ?? '');
+  const name = String(formData.get('name') ?? '').trim();
+  if (!projectId || !name) return;
+
+  await renameProject(projectId, name);
+  revalidatePath('/project/[id]', 'page');
+  redirect(`/project/${projectId}?renamed=1`);
+}
+
+/** Deletes the project. Everything under it cascades in the database. */
+export async function deleteProjectAction(formData: FormData) {
+  const projectId = String(formData.get('projectId') ?? '');
+  const orgSlug = String(formData.get('orgSlug') ?? '');
+  if (!projectId) return;
+
+  await deleteProject(projectId);
+  revalidatePath('/app/org/[slug]', 'page');
+  redirect(orgSlug ? `/app/org/${orgSlug}?deleted=1` : '/app');
 }

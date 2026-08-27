@@ -239,3 +239,74 @@ export async function revokeInvitation(roleId: string): Promise<void> {
     .eq('state', 'invited');
   if (reopenErr) throw new Error('Invitation withdrawn, but the seat did not reopen: ' + reopenErr.message);
 }
+
+export interface InvitationTile {
+  token: string;
+  personId: string;
+  personName: string;
+  personEmail: string | null;
+  personPhoto: string | null;
+  personTitle: string;
+  personHue: number;
+  roleTitle: string;
+  roleId: string;
+  status: 'sent' | 'accepted' | 'declined';
+  at: string;
+}
+
+/**
+ * Every invitation on a project, in the three states anyone cares about:
+ * sent and waiting, accepted, declined.
+ *
+ * The project page had this spread across a "pending" list, a decline map
+ * and the seat rows, which is three places to look for one question — who
+ * did we ask, and what did they say. One query, one list, one answer.
+ */
+export async function listInvitationTiles(projectId: string): Promise<InvitationTile[]> {
+  const supabase = await createServerSupabase();
+
+  const { data, error } = await supabase
+    .from('invitations')
+    .select(
+      `token, status, sent_at, responded_at,
+       people ( id, name, email, photo, title, hue ),
+       seats!inner ( role_id, project_id, project_roles ( title ) )`,
+    )
+    .eq('seats.project_id', projectId)
+    .in('status', ['pending', 'accepted', 'declined'])
+    .order('sent_at', { ascending: false });
+
+  if (error) throw new Error('Could not load invitations: ' + error.message);
+
+  const rows = (data ?? []) as unknown as {
+    token: string;
+    status: string;
+    sent_at: string;
+    responded_at: string | null;
+    people: {
+      id: string;
+      name: string;
+      email: string | null;
+      photo: string | null;
+      title: string;
+      hue: number;
+    } | null;
+    seats: { role_id: string; project_roles: { title: string } | null } | null;
+  }[];
+
+  return rows
+    .filter((r) => r.people && r.seats)
+    .map((r) => ({
+      token: r.token,
+      personId: r.people!.id,
+      personName: r.people!.name,
+      personEmail: r.people!.email,
+      personPhoto: r.people!.photo,
+      personTitle: r.people!.title,
+      personHue: r.people!.hue,
+      roleTitle: r.seats!.project_roles?.title ?? 'a role',
+      roleId: r.seats!.role_id,
+      status: r.status === 'pending' ? 'sent' : (r.status as 'accepted' | 'declined'),
+      at: r.responded_at ?? r.sent_at,
+    }));
+}

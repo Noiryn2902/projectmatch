@@ -327,3 +327,39 @@ export async function createProject(
   if (error) throw new Error('Could not create the project: ' + error.message);
   return data as string;
 }
+
+/**
+ * Renames a project. Ordinary `projects_write` RLS — an org member on a
+ * non-demo project — is the only gate, same as every other write here.
+ */
+export async function renameProject(projectId: string, name: string): Promise<void> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from('projects')
+    .update({ name: name.slice(0, 120) })
+    .eq('id', projectId);
+
+  if (error) {
+    if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
+      throw new Error('Only a member of this organisation can rename it.');
+    }
+    throw new Error('Could not rename the project: ' + error.message);
+  }
+}
+
+/**
+ * Deletes a project outright. Roles, requirements, seats, invitations and
+ * messages all go with it — that is the `on delete cascade` in 0001 doing
+ * the work, rather than five deletes here that could half-succeed.
+ */
+export async function deleteProject(projectId: string): Promise<void> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.from('projects').delete().eq('id', projectId);
+
+  if (error) {
+    if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
+      throw new Error('Only a member of this organisation can delete it.');
+    }
+    throw new Error('Could not delete the project: ' + error.message);
+  }
+}

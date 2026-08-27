@@ -19,7 +19,7 @@ import BigCta from './BigCta';
 import SiteFooter from './SiteFooter';
 import Directory from './Directory';
 import SiteNav, { type Viewer } from './SiteNav';
-import Workspace from './Workspace';
+import { lockTeamAction } from '@/app/actions';
 
 const SORTS: { id: SortMode; label: string; short: string }[] = [
   { id: 'bestFit', label: 'Best fit for this team', short: 'Best fit' },
@@ -63,7 +63,6 @@ export default function TeamBuilder({
   const [busy, setBusy] = useState(false);
   const [exploring, setExploring] = useState<string | null>(null);
   const [browsing, setBrowsing] = useState<{ id: string; label: string } | null>(null);
-  const [locked, setLocked] = useState(false);
 
   const [team, setTeam] = useState<TeamState>(() =>
     Object.fromEntries(initialBrief.roles.map((r) => [r.id, null])),
@@ -389,18 +388,6 @@ export default function TeamBuilder({
     );
   }
 
-  if (locked) {
-    return (
-      <Workspace
-        brief={brief}
-        members={members}
-        roles={brief.roles}
-        health={health}
-        onBack={() => setLocked(false)}
-      />
-    );
-  }
-
   return (
     <div className="pm-grain min-h-screen">
       <header className="sticky top-0 z-20 border-b border-line bg-canvas/90 backdrop-blur">
@@ -639,18 +626,23 @@ export default function TeamBuilder({
                 : `${health.seats - health.filled} of ${health.seats} seats still open.`}
             </p>
             <p className="mt-0.5 text-[12px] text-faint">
-              Locking opens the workspace: chat, contacts, and a kickoff time that works for
-              everyone.
+              Creates it for real in your organisation, then invites people from your own roster.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setLocked(true)}
-            disabled={health.filled === 0}
-            className="ml-auto rounded-xl bg-accent px-5 py-2.5 text-[14px] font-semibold text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            Lock in this team →
-          </button>
+          {/*
+            The demo ends here and the product starts. The brief goes with
+            them; the sixty fictional people do not.
+          */}
+          <form action={lockTeamAction} className="ml-auto">
+            <input type="hidden" name="brief" value={brief.text} />
+            <button
+              type="submit"
+              disabled={health.filled === 0}
+              className="rounded-xl bg-accent px-5 py-2.5 text-[14px] font-semibold text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              Build this for real →
+            </button>
+          </form>
         </div>
 
         <footer className="mt-12 border-t border-line pt-4 text-[11px] leading-relaxed text-faint">
