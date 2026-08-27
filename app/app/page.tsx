@@ -10,6 +10,7 @@ import { listProjects } from '@/lib/data/projects';
 import { getCurrentUser } from '@/lib/supabase/server';
 
 import { createOrgAction } from './actions';
+import { deleteProjectAction } from '../project/[id]/actions';
 
 /**
  * The signed-in home, and the answer to "what am I looking at".
@@ -105,6 +106,63 @@ export default async function AppHome() {
 
       <div className="mt-8 grid gap-4 sm:grid-cols-[1fr_260px]">
         <section>
+          {/*
+            Projects as tiles, with a way to start one and a way to remove
+            one. This is the workspace — the thing you come back to — so it
+            leads, and everything you own is on it rather than a click away
+            behind an org page.
+          */}
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[11px] tracking-wide text-faint uppercase">Projects</h2>
+            <span className="text-[11px] text-faint">{projects.length}</span>
+          </div>
+          <ul className="mt-2 mb-8 grid gap-2.5 sm:grid-cols-2">
+            {projects.map((proj) => (
+              <li
+                key={proj.id}
+                className="group relative rounded-xl border border-line bg-panel transition-colors hover:border-line-strong"
+              >
+                <Link href={`/project/${proj.id}`} className="block px-4 py-3.5">
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span className="truncate text-[13px] font-medium text-ink">
+                      {proj.name || 'Untitled project'}
+                    </span>
+                    <span className="shrink-0 text-[10px] text-faint uppercase">{proj.status}</span>
+                  </span>
+                  <span className="mt-2 block text-[11px] text-faint">Open</span>
+                </Link>
+                {/* Only shows on hover, so the tile stays calm until you
+                    actually reach for it. */}
+                <form
+                  action={deleteProjectAction}
+                  className="absolute right-3 bottom-3 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+                >
+                  <input type="hidden" name="projectId" value={proj.id} />
+                  <input type="hidden" name="orgSlug" value={org.slug} />
+                  <button
+                    type="submit"
+                    aria-label={`Delete ${proj.name || 'project'}`}
+                    className="text-[11px] text-faint transition-colors hover:text-warn"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </li>
+            ))}
+
+            <li>
+              <Link
+                href={`/app/org/${org.slug}/new`}
+                className="flex h-full min-h-[84px] items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong px-4 py-3.5 text-[13px] text-muted transition-colors hover:border-accent hover:text-accent"
+              >
+                <span aria-hidden className="text-[18px] leading-none">
+                  +
+                </span>
+                New project
+              </Link>
+            </li>
+          </ul>
+
           <h2 className="text-[11px] tracking-wide text-faint uppercase">Your teams</h2>
           {work.teams.length === 0 ? (
             <p className="mt-2 rounded-xl border border-dashed border-line bg-panel px-4 py-5 text-[13px] text-faint">

@@ -399,39 +399,64 @@ export default async function ProjectPage({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-ink">{inv.personName}</p>
                     <p className="truncate text-[12px] text-muted">{inv.roleTitle}</p>
-                    {inv.personEmail && (
-                      <p className="truncate text-[11px] text-faint">{inv.personEmail}</p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] ${
-                        inv.status === 'accepted'
-                          ? 'border-good/40 text-good'
-                          : inv.status === 'declined'
-                            ? 'border-warn/40 text-warn'
-                            : 'border-line text-faint'
-                      }`}
-                    >
-                      {inv.status === 'accepted'
-                        ? 'Accepted'
-                        : inv.status === 'declined'
-                          ? 'Declined'
-                          : 'Sent'}
-                    </span>
-                    {inv.status === 'sent' && !readOnly && (
-                      <form action={revokeInvitationAction}>
-                        <input type="hidden" name="projectId" value={project.id} />
-                        <input type="hidden" name="roleId" value={inv.roleId} />
-                        <button
-                          type="submit"
-                          className="text-[11px] text-muted transition-colors hover:text-warn"
+
+                    {/* Interact — the things you would actually do next, in
+                        one row instead of scattered around the page. */}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                      {inv.personEmail && (
+                        <a
+                          href={`mailto:${inv.personEmail}`}
+                          className="truncate text-faint transition-colors hover:text-accent"
                         >
-                          Withdraw
-                        </button>
-                      </form>
-                    )}
+                          {inv.personEmail}
+                        </a>
+                      )}
+                      {inv.status === 'accepted' && chatOpen && (
+                        <a href="#conversation" className="text-accent hover:underline">
+                          Chat
+                        </a>
+                      )}
+                      {/* A decline is not a dead end — it sends you back to
+                          the ranking for that one seat, recomputed against
+                          the team as it now stands. */}
+                      {inv.status === 'declined' && !readOnly && (
+                        <Link
+                          href={`/project/${project.id}/staff/${inv.roleId}`}
+                          className="text-accent hover:underline"
+                        >
+                          Swap for someone else
+                        </Link>
+                      )}
+                      {inv.status === 'sent' && !readOnly && (
+                        <form action={revokeInvitationAction}>
+                          <input type="hidden" name="projectId" value={project.id} />
+                          <input type="hidden" name="roleId" value={inv.roleId} />
+                          <button
+                            type="submit"
+                            className="text-muted transition-colors hover:text-warn"
+                          >
+                            Withdraw
+                          </button>
+                        </form>
+                      )}
+                    </div>
                   </div>
+
+                  <span
+                    className={`shrink-0 self-start rounded-full border px-2 py-0.5 text-[10px] ${
+                      inv.status === 'accepted'
+                        ? 'border-good/40 text-good'
+                        : inv.status === 'declined'
+                          ? 'border-warn/40 text-warn'
+                          : 'border-line text-faint'
+                    }`}
+                  >
+                    {inv.status === 'accepted'
+                      ? 'Accepted'
+                      : inv.status === 'declined'
+                        ? 'Declined'
+                        : 'Sent'}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -439,7 +464,7 @@ export default async function ProjectPage({
         )}
 
         <section className="mt-8">
-          <h2 className="font-display text-[15px] font-semibold text-ink">Conversation</h2>
+          <h2 id="conversation" className="scroll-mt-20 font-display text-[15px] font-semibold text-ink">Conversation</h2>
           {!chatOpen ? (
             <p className="mt-2 rounded-xl border border-line border-dashed bg-panel px-4 py-3 text-[12px] text-faint">
               Opens when someone accepts a seat.
