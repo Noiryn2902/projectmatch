@@ -585,9 +585,24 @@ invitation is marked first, so a failure between the two leaves a seat showing `
 nothing pending — which re-inviting clears — rather than a live link to a seat that has moved on.
 The section is hidden for the demo org, whose seats cannot be staffed at all.
 
-**Still deferred in Phase 2:** chat unlocking on acceptance. That is the last piece, and the
-largest — it needs the `messages` table wired to a real component, replacing the `BroadcastChannel`
-demo transport §3 marks for deletion.
+**Done (2026-08-27) — the conversation is real, and it opens on acceptance.** `lib/data/messages.ts`
+persists project chat as rows: `listMessages()`, `postMessage()` (attributed to the caller's auth
+identity, linked to their `people` row when they have one, `author_id` null otherwise), and
+`chatIsOpen(members)` — the gate the roadmap asked for, chat opens once **at least one person has
+accepted a seat**, not when a team was proposed. Readable by any org member and by a visitor to the
+demo org (whose chat is shown but closed to new messages); writable only by a member of the owning
+org, enforced by the `messages_insert` policy. The project page renders the thread and a send box
+below the roster.
+
+Realtime is **not** wired yet — a send is a server round trip and the page re-renders. The socket
+subscription (the one sanctioned exception to "no database in the browser") is a follow-on, not
+what makes the chat real. The old `BroadcastChannel` transport in `lib/live.ts` and
+`LIVE_CHAT_SETUP.md` still exist — they belong to the unrouted `TeamBuilder.tsx` / `Workspace.tsx`
+client app and their deletion is part of the §3 split, not this slice.
+
+**Phase 2 is substantively complete:** the invitation state machine, decline re-ranking, email
+delivery, revoke / pending management, and chat-on-acceptance all exist and hold. What remains is
+polish (realtime chat) and the §3 removal of the demo transports.
 
 ### Phase 3 — Skills you can trust
 

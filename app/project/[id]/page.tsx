@@ -5,10 +5,11 @@ import Avatar from '@/components/Avatar';
 import { hasDatabase } from '@/lib/env';
 import { getDemoOrg } from '@/lib/data/orgs';
 import { listPendingInvitations } from '@/lib/data/invitations';
+import { chatIsOpen, listMessages } from '@/lib/data/messages';
 import { getProject } from '@/lib/data/projects';
 import { labelOf } from '@/lib/engine/graph';
 
-import { revokeInvitationAction } from './actions';
+import { postMessageAction, revokeInvitationAction } from './actions';
 
 /**
  * The first real, URL-addressable project page.
@@ -61,6 +62,8 @@ export default async function ProjectPage({
   const readOnly = demoOrg !== null && project.orgId === demoOrg.id;
 
   const pending = readOnly ? [] : await listPendingInvitations(project.id);
+  const chatOpen = chatIsOpen(project.members);
+  const messages = chatOpen ? await listMessages(project.id) : [];
 
   const { brief, roles, health, seats, declines } = project;
   const pct = Math.round(health.coverage * 100);
@@ -295,6 +298,70 @@ export default async function ProjectPage({
             </ul>
           </section>
         )}
+
+        <section className="mt-8">
+          <h2 className="font-display text-[15px] font-semibold text-ink">Conversation</h2>
+          {!chatOpen ? (
+            <p className="mt-2 rounded-xl border border-line border-dashed bg-panel px-4 py-3 text-[12px] text-faint">
+              Opens once the first person accepts a seat — a team that exists, not one that was
+              proposed.
+            </p>
+          ) : (
+            <div className="mt-3 rounded-xl border border-line bg-panel">
+              <ul className="max-h-[420px] space-y-3 overflow-y-auto px-4 py-4">
+                {messages.length === 0 ? (
+                  <li className="text-[12px] text-faint italic">
+                    No messages yet. Say hello to the team.
+                  </li>
+                ) : (
+                  messages.map((m) => (
+                    <li key={m.id} className={m.mine ? 'text-right' : undefined}>
+                      <p className="text-[11px] text-faint">
+                        {m.authorName} &middot; {new Date(m.at).toLocaleString()}
+                      </p>
+                      <p
+                        className={`mt-0.5 inline-block max-w-[80%] rounded-xl px-3 py-1.5 text-[13px] whitespace-pre-wrap ${
+                          m.mine ? 'bg-accent text-panel' : 'bg-panel-2 text-ink'
+                        }`}
+                      >
+                        {m.body}
+                      </p>
+                    </li>
+                  ))
+                )}
+              </ul>
+              {readOnly ? (
+                <p className="border-t border-line px-4 py-3 text-[11px] text-faint">
+                  This is the demo organisation — the conversation is visible but closed to new
+                  messages.
+                </p>
+              ) : (
+                <form
+                  action={postMessageAction}
+                  className="flex gap-2 border-t border-line px-3 py-3"
+                >
+                  <input type="hidden" name="projectId" value={project.id} />
+                  <input
+                    type="text"
+                    name="body"
+                    required
+                    maxLength={4000}
+                    autoComplete="off"
+                    placeholder="Message the team"
+                    aria-label="Message the team"
+                    className="min-w-0 flex-1 rounded-full border border-line bg-canvas px-4 py-2 text-[13px] outline-none transition-colors focus:border-accent"
+                  />
+                  <button
+                    type="submit"
+                    className="shrink-0 rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-panel transition-opacity hover:opacity-90"
+                  >
+                    Send
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
+        </section>
       </div>
     </main>
   );
