@@ -2,7 +2,12 @@ import type { Brief, Person, Role, ScopeFilter, ScoreBreakdown, SortMode, TeamSt
 import { labelOf } from './graph';
 import { marginalGain, roleMatch, scoreCandidate, allRequirements, coverage } from './score';
 
-const SEAT_FLOOR = 0.35;
+/**
+ * Below this, a person cannot credibly hold the seat, whatever they might
+ * contribute to the team overall. Exported so a caller ranking a single seat
+ * can draw the same line this module draws rather than inventing its own.
+ */
+export const SEAT_FLOOR = 0.35;
 
 export interface Candidate {
   person: Person;

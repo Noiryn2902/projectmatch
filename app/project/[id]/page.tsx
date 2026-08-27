@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import Avatar from '@/components/Avatar';
 import { hasDatabase } from '@/lib/env';
+import { getDemoOrg } from '@/lib/data/orgs';
 import { getProject } from '@/lib/data/projects';
 import { labelOf } from '@/lib/engine/graph';
 
@@ -42,6 +43,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
   const project = await getProject(id);
   if (!project) notFound();
+
+  // Same reasoning as the staffing page: the demo org is readable by anyone
+  // and writable by nobody, so don't offer a way in to a page whose only
+  // action the database will refuse.
+  const demoOrg = await getDemoOrg();
+  const readOnly = demoOrg !== null && project.orgId === demoOrg.id;
 
   const { brief, roles, team, members, health } = project;
   const memberById = new Map(members.map((m) => [m.id, m]));
@@ -104,6 +111,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                       <span className="shrink-0 text-[11px] text-faint">
                         {role.hoursNeeded} hrs/wk
                       </span>
+                      <Link
+                        href={`/project/${project.id}/staff/${role.id}`}
+                        className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-[12px] text-muted transition-colors hover:border-line-strong hover:text-ink"
+                      >
+                        {readOnly ? 'See ranking' : person ? 'Change' : 'Find someone'}
+                      </Link>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5 pl-11">
                       {role.requirements.map((req) => (

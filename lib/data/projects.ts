@@ -165,6 +165,34 @@ export async function listProjects(orgId: string): Promise<ProjectSummary[]> {
 }
 
 /**
+ * Seats a person, or empties the seat when personId is null.
+ *
+ * Ordinary RLS-governed updates — the `seats_all` policy already requires org
+ * membership and refuses the demo org outright, which is exactly the check
+ * that should run here. No privileged path.
+ *
+ * Note what this deliberately does *not* do yet: it seats someone directly,
+ * without asking them. That is Phase 2's whole subject — an invitation the
+ * person can accept or decline, with the engine re-ranking on a decline — and
+ * the `state` column already carries 'invited' for it. Until then, filling a
+ * seat is an assertion by whoever runs the org, not an agreement.
+ */
+export async function setSeatPerson(roleId: string, personId: string | null): Promise<void> {
+  const supabase = await createServerSupabase();
+
+  const { error } = await supabase
+    .from('seats')
+    .update({
+      person_id: personId,
+      state: personId ? 'filled' : 'open',
+      filled_at: personId ? new Date().toISOString() : null,
+    })
+    .eq('role_id', roleId);
+
+  if (error) throw new Error('Could not update the seat: ' + error.message);
+}
+
+/**
  * The write path: turns a submitted brief into a real, persisted, linkable
  * project inside a real org — through create_project(), see
  * supabase/migrations/0003_create_project.sql for why this is one database

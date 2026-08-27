@@ -434,6 +434,37 @@ just existing.
 Still open: no name field on project creation (`name` is always empty — the page uses the brief
 text as the title), and profile claiming / CSV import are unchanged from before this slice.
 
+**Done (2026-08-27) — staffing a seat, and a real bug found by testing it.**
+`/project/[id]/staff/[roleId]` ranks the org's roster against one open seat, calling the engine
+directly on live data for the first time. `setSeatPerson()` fills or empties a seat through
+ordinary RLS.
+
+**The bug, worth recording because it was a design error rather than a typo.** The page first
+displayed `breakdown.gapFill` as the single "contribution" number and sorted on it. But `gapFill`
+is computed across *every requirement in the brief*, not the seat being filled — so a product
+designer who fully covers the design role scores identically to a frontend engineer when you are
+looking at the frontend seat. All three test candidates showed exactly 33% on every seat. Sorting
+on it put a product designer at the top of the **backend** seat, and following the ranking produced
+a team with a designer as backend engineer and a frontend engineer as product designer.
+
+`rankCandidates` already guards this with `SEAT_FLOOR` — but only applies it when at least three
+candidates clear the bar, falling back to the whole pool on a small roster, which is exactly the
+case that was being tested. The engine was right; the page was asking it the wrong question.
+
+Fixed by showing **both** numbers — `roleMatch` as "fit" (can they hold this seat) and `gapFill` as
+"adds" (what they close for the whole team) — partitioning on the now-exported `SEAT_FLOOR`, and
+never letting someone below the floor outrank someone above it. People below the bar still appear,
+in a visually separate dashed group with an explanation, because on a small roster showing nothing
+is worse. Verified after the fix: the backend seat lists only backend/ML/data/platform people, all
+fit ≥ 45%, and an already-seated person correctly shows 0% adds.
+
+Also fixed while here: seating in the demo org threw a raw 500 (RLS correctly refusing the write,
+surfaced terribly). Both the staffing page and the project page now detect the demo org and show
+the ranking read-only with an explanation instead of offering buttons the database will reject.
+
+Still open: `autoFill` (staff every seat at once) is not wired to this page, and seating is still
+an assertion rather than an invitation — which is Phase 2 below.
+
 ### Phase 2 — Invitations that leave the building
 
 - Invitation records with real email delivery, and a link that works before the recipient has an
