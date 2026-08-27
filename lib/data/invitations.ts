@@ -157,3 +157,85 @@ export async function getPendingInvitationForRole(roleId: string): Promise<{ tok
   if (error) throw new Error('Could not load the invitation: ' + error.message);
   return data ? { token: (data as { token: string }).token } : null;
 }
+
+export interface PendingInvitation {
+  token: string;
+  personName: string;
+  roleId: string;
+  roleTitle: string;
+  sentAt: string;
+  expiresAt: string;
+}
+
+/** Every unanswered invitation on a project, for the staffing side to manage. */
+export async function listPendingInvitations(projectId: string): Promise<PendingInvitation[]> {
+  const supabase = await createServerSupabase();
+
+  const { data, error } = await supabase
+    .from('invitations')
+    .select(
+      `token, sent_at, expires_at,
+       people ( name ),
+       seats!inner ( role_id, project_id, project_roles ( title ) )`,
+    )
+    .eq('seats.project_id', projectId)
+    .eq('status', 'pending')
+    .order('sent_at', { ascending: true });
+
+  if (error) throw new Error('Could not load pending invitations: ' + error.message);
+
+  const rows = (data ?? []) as unknown as {
+    token: string;
+    sent_at: string;
+    expires_at: string;
+    people: { name: string } | null;
+    seats: { role_id: string; project_roles: { title: string } | null } | null;
+  }[];
+
+  return rows.map((r) => ({
+    token: r.token,
+    personName: r.people?.name ?? 'Someone',
+    roleId: r.seats?.role_id ?? '',
+    roleTitle: r.seats?.project_roles?.title ?? 'a role',
+    sentAt: r.sent_at,
+    expiresAt: r.expires_at,
+  }));
+}
+
+/**
+ * Withdraws the pending invitation on a role's seat and reopens the seat.
+ *
+ * Two RLS-checked writes rather than one function: there is no
+ * `SECURITY DEFINER` reason here (the caller is an org member acting on their
+ * own project) and no migration is worth one revoke. The invitation is
+ * marked first — if the seat update then failed, the recoverable state is a
+ * seat still showing 'invited' with nothing pending on it, which re-inviting
+ * clears, rather than a live invitation to a seat that has moved on.
+ */
+export async function revokeInvitation(roleId: string): Promise<void> {
+  const supabase = await createServerSupabase();
+
+  const { data: seat, error: seatErr } = await supabase
+    .from('seats')
+    .select('id')
+    .eq('role_id', roleId)
+    .maybeSingle();
+  if (seatErr) throw new Error('Could not find the seat: ' + seatErr.message);
+  if (!seat) throw new Error('No seat exists for that role.');
+
+  const seatId = (seat as { id: string }).id;
+
+  const { error: invErr } = await supabase
+    .from('invitations')
+    .update({ status: 'revoked', responded_at: new Date().toISOString() })
+    .eq('seat_id', seatId)
+    .eq('status', 'pending');
+  if (invErr) throw new Error('Could not withdraw the invitation: ' + invErr.message);
+
+  const { error: reopenErr } = await supabase
+    .from('seats')
+    .update({ person_id: null, state: 'open', filled_at: null })
+    .eq('id', seatId)
+    .eq('state', 'invited');
+  if (reopenErr) throw new Error('Invitation withdrawn, but the seat did not reopen: ' + reopenErr.message);
+}

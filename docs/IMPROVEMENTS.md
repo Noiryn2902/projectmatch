@@ -576,7 +576,18 @@ typecheck + lint + 51 engine + 22 import + 9 email + build.
 address, to confirm an actual email arrives. The keyless fallback path (console log + link on page)
 is what runs until then.
 
-**Still deferred:** a revoke button, a pending-invitations list, and chat unlocking on acceptance.
+**Done (2026-08-27) — managing the invitations already sent.** The project page now lists every
+unanswered invitation (`listPendingInvitations()`), each with its `/invite/…` link to copy again
+and a **Withdraw** button. `revokeInvitation(roleId)` marks the pending row `revoked` and reopens
+the seat — two ordinary RLS-checked writes, not a function: there is no `SECURITY DEFINER` reason
+(the caller is an org member on their own project) and no migration is worth one revoke. The
+invitation is marked first, so a failure between the two leaves a seat showing `invited` with
+nothing pending — which re-inviting clears — rather than a live link to a seat that has moved on.
+The section is hidden for the demo org, whose seats cannot be staffed at all.
+
+**Still deferred in Phase 2:** chat unlocking on acceptance. That is the last piece, and the
+largest — it needs the `messages` table wired to a real component, replacing the `BroadcastChannel`
+demo transport §3 marks for deletion.
 
 ### Phase 3 — Skills you can trust
 

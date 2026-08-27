@@ -4,8 +4,11 @@ import { notFound } from 'next/navigation';
 import Avatar from '@/components/Avatar';
 import { hasDatabase } from '@/lib/env';
 import { getDemoOrg } from '@/lib/data/orgs';
+import { listPendingInvitations } from '@/lib/data/invitations';
 import { getProject } from '@/lib/data/projects';
 import { labelOf } from '@/lib/engine/graph';
+
+import { revokeInvitationAction } from './actions';
 
 /**
  * The first real, URL-addressable project page.
@@ -25,10 +28,10 @@ export default async function ProjectPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ invited?: string; emailed?: string }>;
+  searchParams: Promise<{ invited?: string; emailed?: string; revoked?: string }>;
 }) {
   const { id } = await params;
-  const { invited, emailed } = await searchParams;
+  const { invited, emailed, revoked } = await searchParams;
 
   if (!hasDatabase) {
     // Nothing before this route had a concept of a persisted project — there
@@ -56,6 +59,8 @@ export default async function ProjectPage({
   // action the database will refuse.
   const demoOrg = await getDemoOrg();
   const readOnly = demoOrg !== null && project.orgId === demoOrg.id;
+
+  const pending = readOnly ? [] : await listPendingInvitations(project.id);
 
   const { brief, roles, health, seats, declines } = project;
   const pct = Math.round(health.coverage * 100);
@@ -119,6 +124,12 @@ export default async function ProjectPage({
             <p className="mt-1 text-[12px] text-muted">
               Open one below to see the roster re-ranked against the team as it now stands.
             </p>
+          </div>
+        )}
+
+        {revoked && (
+          <div className="mt-6 rounded-xl border border-line border-l-2 border-l-warn bg-panel px-4 py-3.5 text-[13px] text-ink">
+            Invitation withdrawn. The seat is open again.
           </div>
         )}
 
@@ -244,6 +255,46 @@ export default async function ProjectPage({
             </section>
           </aside>
         </div>
+
+        {pending.length > 0 && (
+          <section className="mt-8">
+            <h2 className="font-display text-[15px] font-semibold text-ink">Awaiting a reply</h2>
+            <p className="mt-1 text-[12px] text-muted">
+              These seats are held, not filled. Withdrawing one reopens it immediately.
+            </p>
+            <ul className="mt-3 rounded-xl border border-line bg-panel">
+              {pending.map((inv) => (
+                <li
+                  key={inv.token}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3 last:border-b-0"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium">
+                      {inv.personName}{' '}
+                      <span className="font-normal text-muted">&middot; {inv.roleTitle}</span>
+                    </p>
+                    <code className="mt-1 block overflow-x-auto text-[11px] break-all text-accent">
+                      /invite/{inv.token}
+                    </code>
+                  </div>
+                  <span className="shrink-0 text-[11px] text-faint">
+                    expires {new Date(inv.expiresAt).toLocaleDateString()}
+                  </span>
+                  <form action={revokeInvitationAction} className="shrink-0">
+                    <input type="hidden" name="projectId" value={project.id} />
+                    <input type="hidden" name="roleId" value={inv.roleId} />
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-muted transition-colors hover:border-warn/40 hover:text-warn"
+                    >
+                      Withdraw
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </main>
   );
