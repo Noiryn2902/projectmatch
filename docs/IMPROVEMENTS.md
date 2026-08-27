@@ -651,10 +651,39 @@ assertions (suite now 61). Pure, UI-only, no migration. This is the "and the int
 half of the trust work — it makes slice 11's discount, otherwise invisible, legible on the page
 where the pitch lives.
 
-**Still open in Phase 3:** resume / GitHub import as an AI action, recency, endorsements
-(`endorsements` table + RLS already exist in `0001`, but the engine reads `person_skills.provenance`
-not the endorsement rows, and the org owner has no `people` row to endorse *from* yet — that ties
-into claim-your-profile), and a per-*skill* breakdown rather than the single weakest-link tag.
+**Done (2026-08-27) — a person page, and skills read out of a résumé.** `/app/org/[slug]/people/[id]`
+is the first real view of one person: their details, and every skill with the provenance badge that
+says where the level came from. It also closes a navigation gap the roadmap kept noting — the
+roster rows link here now.
+
+The résumé box on that page (admin only) is the deterministic half of the first Phase 3 bullet.
+`lib/skills/extract.ts` — pure, no key, no database — scans pasted text for the 82 vocabulary
+skills by label and alias, resolves each to its canonical id, and reports what it finds at a flat
+level 3. It does not read a level out of prose: that guess is the unreliable part and is what an AI
+pass is for. `addExtractedSkills()` writes the new ones with `provenance = 'extracted'`,
+`source = 'résumé'`, and **skips any skill already on file** so an extracted level can never
+overwrite an endorsed or verified one. 10 assertions in `scripts/test-extract.ts`
+(`npm run verify` now runs `test:extract` too).
+
+This follows the `fallbackBrief()` precedent: the parse runs directly in the server action, not
+through `/api/ai`. A Gemini pass to sharpen levels — the "fourth action on the AI route" as
+literally written — is the remaining half, layered on top of this floor, not instead of it.
+
+**Still open in Phase 3:**
+- **Gemini skill extraction** on top of the deterministic floor above.
+- **Recency** (`last_used_at`). The engine hook is ready (`skillTrust` would take a `now`), but
+  *nothing captures a skill date yet* — not the seed, not roster import, not résumé extraction —
+  so it would be invisible. Needs a data source first, and the honest ones are narrow (an explicit
+  "last used" column on import; a year parsed from a résumé is exactly the unreliable guess this
+  slice refused to make).
+- **Endorsements.** The `endorsements` table and its RLS already exist in `0001`, and effective
+  provenance could be *derived* from endorsement rows at the data layer with no migration — but the
+  person doing the endorsing needs a `people` row of their own in the org, and the org owner does
+  not have one. That is **claim-your-profile**, and claiming an imported `people` row (setting its
+  `user_id` when you are not yet an admin of anything) needs a `SECURITY DEFINER` function —
+  **a new migration the owner has to paste into the Supabase SQL editor by hand.** That is the
+  next real step and it stops at a hand-off.
+- A per-*skill* breakdown on the ranking rather than the single weakest-link tag.
 
 ### Phase 3.5 — The engine phase
 

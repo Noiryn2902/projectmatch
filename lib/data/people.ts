@@ -223,6 +223,52 @@ export async function getPeopleByIds(ids: string[]): Promise<Person[]> {
   return (data as unknown as PersonRow[]).map(toPerson);
 }
 
+/**
+ * Adds skills read out of a résumé to a person, as `extracted` provenance.
+ *
+ * Skips any skill the person already has — an extracted level must never
+ * overwrite one a colleague endorsed or the org verified. Ordinary
+ * `person_skills_write` RLS applies: an org admin, or the person themselves.
+ * Returns how many were actually new.
+ */
+export async function addExtractedSkills(
+  personId: string,
+  skills: { skillId: string; level: number }[],
+): Promise<number> {
+  if (skills.length === 0) return 0;
+
+  const supabase = await createServerSupabase();
+
+  const { data: existing, error: readErr } = await supabase
+    .from('person_skills')
+    .select('skill_id')
+    .eq('person_id', personId);
+  if (readErr) throw new Error('Could not read existing skills: ' + readErr.message);
+
+  const have = new Set((existing ?? []).map((r) => (r as { skill_id: string }).skill_id));
+  const fresh = skills.filter((s) => !have.has(s.skillId));
+  if (fresh.length === 0) return 0;
+
+  const { error } = await supabase.from('person_skills').insert(
+    fresh.map((s) => ({
+      person_id: personId,
+      skill_id: s.skillId,
+      level: s.level,
+      provenance: 'extracted' as const,
+      source: 'résumé',
+    })),
+  );
+
+  if (error) {
+    if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
+      throw new Error('Only an organisation admin can edit this roster.');
+    }
+    throw new Error('Could not add the skills: ' + error.message);
+  }
+
+  return fresh.length;
+}
+
 /** One person, or null if they do not exist or are not visible to the caller. */
 export async function getPerson(id: string): Promise<Person | null> {
   if (!hasDatabase) {

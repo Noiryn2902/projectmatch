@@ -113,13 +113,18 @@ export default async function OrgRosterPage({
           ) : (
             <ul>
               {people.map((p) => (
-                <li key={p.id} className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-b-0">
-                  <Avatar person={p} size={32} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium">{p.name}</p>
-                    <p className="truncate text-[12px] text-muted">{p.title || 'No title yet'}</p>
-                  </div>
-                  <span className="shrink-0 text-[11px] text-faint">{p.hoursPerWeek} hrs/wk</span>
+                <li key={p.id} className="border-b border-line last:border-b-0">
+                  <Link
+                    href={`/app/org/${org.slug}/people/${p.id}`}
+                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-panel-2"
+                  >
+                    <Avatar person={p} size={32} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-medium">{p.name}</p>
+                      <p className="truncate text-[12px] text-muted">{p.title || 'No title yet'}</p>
+                    </div>
+                    <span className="shrink-0 text-[11px] text-faint">{p.hoursPerWeek} hrs/wk</span>
+                  </Link>
                 </li>
               ))}
             </ul>
