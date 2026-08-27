@@ -289,12 +289,30 @@ clear a requirement. `teamHealth()` now uses it two ways:
 
 Pure engine, no migration. 8 new assertions (engine suite 69). Nothing competitors show.
 
-### 6.3 One answer, where real decisions need options **[Proposed]**
+### 6.3 One answer, where real decisions need options **[Done — 2026-08-27]**
 
-Today: here is your team. Better: two or three *distinct* teams with named tradeoffs — "fastest,
-but payments rests on one person" versus "two weeks slower, no key-person risk". Pure engine work.
+`proposeTeams(brief, pool, scope)` in `lib/engine/options.ts` runs the same assembly pass under a
+few objectives and reports how the results differ:
 
-It changes the product's posture from oracle to advisor, which is both more honest and more useful.
+- **Best coverage** — `autoFill` as it was.
+- **No single point of failure** — the swap pass with a bus-factor term added to the objective.
+- **Lightest load** — the swap pass favouring members who keep spare hours after the seat.
+
+Identical results are dropped, so a small roster may still return one option. Each non-first option
+carries a generated tradeoff sentence relative to best coverage — *"2 pts less coverage, no single
+point of failure, 6 more spare hrs/wk per person"*. `improve()` gained an optional `objective`
+parameter and `defaultObjective()` is now exported; `autoFill` is unchanged.
+
+`/project/[id]/staff` (the index under the per-seat pages) renders the options as cards — coverage,
+bus factor, spare hours, the tradeoff, and who sits in each seat. Advisory only: it proposes,
+the per-seat pages act. 7 new assertions (engine suite 84), no migration.
+
+### Phase 3.5 status
+
+All four recommended-core items are in: **6.1 capacity conflicts** (first cut), **6.2 bus factor**,
+**6.3 options with tradeoffs**, **6.4 infeasibility diagnosis**. Still open from §6: 6.15 the scale
+benchmark (an hour), 6.7 growth-aware staffing (the signature move), and the deeper cuts of 6.1
+(engine-level allocation penalty, time-phased overlap, a team-level conflict summary).
 
 ### 6.4 Infeasibility diagnosis **[Done — 2026-08-27]**
 

@@ -13,6 +13,7 @@ import { fallbackBrief } from '../lib/ai/fallback';
 import { autoFill, membersOf, rankCandidates } from '../lib/engine/assemble';
 import { diagnoseRole } from '../lib/engine/feasibility';
 import { teamHealth } from '../lib/engine/health';
+import { proposeTeams } from '../lib/engine/options';
 import {
   allRequirements,
   coverage,
@@ -385,6 +386,30 @@ check(
     return d.staffable && d.unmet.length === 0;
   })(),
 );
+
+// ------------------------------------------------------------ team options
+
+group('Team options: more than one answer, tradeoff named');
+
+const opts = proposeTeams(brief, pool, scope);
+check('there is at least one option', opts.length >= 1);
+check('the first option is best-coverage with no tradeoff', opts[0].key === 'best-coverage' && opts[0].tradeoff === '');
+check('every non-first option carries a tradeoff sentence', opts.slice(1).every((o) => o.tradeoff.length > 0));
+check('options are genuinely distinct teams', (() => {
+  const sigs = opts.map((o) => JSON.stringify(Object.entries(o.team).sort()));
+  return new Set(sigs).size === sigs.length;
+})());
+check('every option seats real people from the pool', opts.every((o) =>
+  Object.values(o.team).every((v) => v === null || pool.some((p) => p.id === v)),
+));
+check('proposeTeams is deterministic', (() => {
+  const again = proposeTeams(brief, pool, scope);
+  return JSON.stringify(again) === JSON.stringify(opts);
+})());
+check('a resilient option never has a worse bus factor than best-coverage', (() => {
+  const r = opts.find((o) => o.key === 'resilient');
+  return !r || r.busFactor >= opts[0].busFactor;
+})());
 
 // -------------------------------------------------------------- brief reading
 

@@ -134,20 +134,14 @@ export function autoFill(brief: Brief, pool: Person[], scope: ScopeFilter): Team
   return improve(team, brief, pool, scope);
 }
 
-/** Swap pass: try replacing each member, keep any swap that raises overall coverage. */
-export function improve(
-  team: TeamState,
-  brief: Brief,
-  pool: Person[],
-  scope: ScopeFilter,
-): TeamState {
+/**
+ * The default objective a swap pass climbs: coverage, plus a check that
+ * everyone can actually hold their seat so the optimiser does not park a
+ * designer as the DBA to win a coverage point.
+ */
+export function defaultObjective(brief: Brief, pool: Person[]): (t: TeamState) => number {
   const reqs = allRequirements(brief);
-  const eligible = pool.filter((p) => p.openToProjects && inScope(p, scope));
-  const next: TeamState = { ...team };
-
-  // A swap only counts as an improvement if the person can actually do the
-  // job. Without this the optimiser happily seats a designer as the DBA.
-  const objective = (t: TeamState) => {
+  return (t) => {
     const m = membersOf(t, pool);
     const seatFit =
       brief.roles.reduce((s, r) => {
@@ -156,6 +150,18 @@ export function improve(
       }, 0) / Math.max(1, brief.roles.length);
     return 0.7 * coverage(reqs, m) + 0.3 * seatFit;
   };
+}
+
+/** Swap pass: try replacing each member, keep any swap that raises the objective. */
+export function improve(
+  team: TeamState,
+  brief: Brief,
+  pool: Person[],
+  scope: ScopeFilter,
+  objective: (t: TeamState) => number = defaultObjective(brief, pool),
+): TeamState {
+  const eligible = pool.filter((p) => p.openToProjects && inScope(p, scope));
+  const next: TeamState = { ...team };
 
   for (let pass = 0; pass < 3; pass++) {
     let improved = false;

@@ -99,6 +99,14 @@ export default async function ProjectPage({
               {d}
             </span>
           ))}
+          {!readOnly && (
+            <Link
+              href={`/project/${project.id}/staff`}
+              className="ml-auto rounded-full border border-line px-2.5 py-0.5 text-accent transition-colors hover:border-accent"
+            >
+              Staffing options
+            </Link>
+          )}
         </div>
 
         {invited && (
