@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 
 import Avatar from '@/components/Avatar';
 import { getOrgBySlug } from '@/lib/data/orgs';
-import { listPeople } from '@/lib/data/people';
+import { getMyPersonId, listPeople } from '@/lib/data/people';
 import { listProjects } from '@/lib/data/projects';
 
 import { addPersonAction } from './actions';
@@ -35,7 +35,11 @@ export default async function OrgRosterPage({
   const org = await getOrgBySlug(slug);
   if (!org) notFound();
 
-  const [people, projects] = await Promise.all([listPeople(org.id), listProjects(org.id)]);
+  const [people, projects, myPersonId] = await Promise.all([
+    listPeople(org.id),
+    listProjects(org.id),
+    getMyPersonId(org.id),
+  ]);
   const importedCount = imported ? Number(imported) : 0;
 
   return (
@@ -47,6 +51,26 @@ export default async function OrgRosterPage({
       </header>
 
       <div className="mx-auto max-w-[720px] px-5 py-10">
+        {!myPersonId && (
+          <Link
+            href={`/app/org/${org.slug}/me`}
+            className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-line border-l-2 border-l-accent bg-panel px-4 py-3.5 transition-colors hover:border-accent"
+          >
+            <span>
+              <span className="block text-[13px] font-medium text-ink">
+                You are not on this roster yet
+              </span>
+              <span className="mt-0.5 block text-[12px] text-muted">
+                Add yourself — paste a résumé and we read your skills out of it. Until then you
+                appear in no ranking and cannot endorse anyone.
+              </span>
+            </span>
+            <span className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-panel">
+              Add me
+            </span>
+          </Link>
+        )}
+
         <div className="flex items-baseline justify-between">
           <h1 className="font-display text-lg font-semibold text-ink">Projects</h1>
           <Link

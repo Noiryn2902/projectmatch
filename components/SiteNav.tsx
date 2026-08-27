@@ -1,50 +1,34 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { clearUser, initials, setUser, useUser } from '@/lib/session';
 
 /**
  * Top chrome for the landing page: an announcement strip and a sticky nav.
  *
- * There is no server and no password. Signing in records a display name so the
- * workspace can attribute messages to someone, and nothing more. A password
- * field here would be theatre — it would imply a credential store that does not
- * exist.
+ * Identity here is the real one. `viewer` comes from the server, resolved by
+ * Supabase Auth against a verified session — not a name typed into a modal
+ * and kept in localStorage, which is what this used to do. A signed-in
+ * visitor gets a way into their workspace; a signed-out one gets the real
+ * sign-in page, where GitHub, Google and a mailed link are the options.
  */
 const LINKS = [
   { label: 'How it works', href: '#how-it-works' },
   { label: 'For teams', href: '#for-teams' },
 ];
 
-export default function SiteNav() {
-  const user = useUser();
+export interface Viewer {
+  name: string;
+  email: string;
+}
+
+function initials(name: string) {
+  const p = name.trim().split(/\s+/);
+  return ((p[0]?.[0] ?? '?') + (p[1]?.[0] ?? '')).toUpperCase();
+}
+
+export default function SiteNav({ viewer }: { viewer?: Viewer | null }) {
   const [strip, setStrip] = useState(true);
-  const [mode, setMode] = useState<'login' | 'signup' | null>(null);
-  const dialog = useRef<HTMLDialogElement>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
-
-
-  useEffect(() => {
-    const d = dialog.current;
-    if (!d) return;
-    if (mode && !d.open) {
-      d.showModal();
-      nameRef.current?.focus();
-    }
-    if (!mode && d.open) d.close();
-  }, [mode]);
-
-  function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const name = String(form.get('name') ?? '').trim();
-    const email = String(form.get('email') ?? '').trim();
-    if (!name || !email) return;
-    const u = { name, email };
-    setUser(u);
-    setMode(null);
-  }
 
   return (
     <>
@@ -85,103 +69,55 @@ export default function SiteNav() {
           </div>
 
           <div className="ml-auto flex items-center gap-2.5">
-            {user ? (
+            {viewer ? (
               <>
-                <span
-                  title={user.email}
-                  className="grid size-8 place-items-center rounded-full bg-accent text-[13px] font-bold text-canvas"
+                <Link
+                  href="/app"
+                  title={viewer.email}
+                  className="flex items-center gap-2.5"
                 >
-                  {initials(user.name)}
-                </span>
-                <span className="hidden text-[14px] font-medium sm:inline">
-                  {user.name.split(' ')[0]}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    clearUser();
-                  }}
-                  className="rounded-full border border-line-strong px-4 py-2 text-[13px] font-medium hover:border-accent hover:text-accent"
+                  <span className="grid size-8 place-items-center rounded-full bg-accent text-[13px] font-bold text-canvas">
+                    {initials(viewer.name)}
+                  </span>
+                  <span className="hidden text-[14px] font-medium sm:inline">
+                    {viewer.name.split(' ')[0]}
+                  </span>
+                </Link>
+                <Link
+                  href="/app"
+                  className="rounded-full bg-accent px-4 py-2 text-[13px] font-semibold text-canvas hover:opacity-90"
                 >
-                  Log out
-                </button>
+                  Workspace
+                </Link>
+                {/* A plain form post, so signing out does not depend on JS. */}
+                <form action="/auth/sign-out" method="post">
+                  <button
+                    type="submit"
+                    className="rounded-full border border-line-strong px-4 py-2 text-[13px] font-medium hover:border-accent hover:text-accent"
+                  >
+                    Log out
+                  </button>
+                </form>
               </>
             ) : (
               <>
-                <button
-                  type="button"
-                  onClick={() => setMode('login')}
+                <Link
+                  href="/auth/sign-in?next=/app"
                   className="rounded-full border border-line-strong px-4 py-2 text-[13px] font-medium hover:border-accent hover:text-accent"
                 >
                   Log in
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode('signup')}
+                </Link>
+                <Link
+                  href="/auth/sign-in?next=/app"
                   className="rounded-full bg-accent px-4 py-2 text-[13px] font-semibold text-canvas hover:opacity-90"
                 >
                   Sign up
-                </button>
+                </Link>
               </>
             )}
           </div>
         </div>
       </nav>
-
-      <dialog
-        ref={dialog}
-        onClose={() => setMode(null)}
-        className="m-auto w-[min(92vw,380px)] rounded-2xl border border-line-strong bg-panel p-7 text-ink backdrop:bg-black/65 backdrop:backdrop-blur-sm"
-      >
-        <h3 className="font-display text-[20px] font-semibold">
-          {mode === 'login' ? 'Welcome back' : 'Create your account'}
-        </h3>
-        <p className="mt-1.5 text-[13px] text-muted">
-          {mode === 'login'
-            ? 'Enter your details to pick up where you left off.'
-            : 'No password needed — your briefs stay on this device.'}
-        </p>
-
-        <form onSubmit={submit}>
-          <label htmlFor="nm" className="mt-4 block text-[12px] text-muted">
-            Your name
-          </label>
-          <input
-            id="nm"
-            name="name"
-            ref={nameRef}
-            required
-            autoComplete="name"
-            placeholder="Tarun Sharma"
-            className="mt-1.5 w-full rounded-lg border border-line-strong bg-canvas px-3 py-2.5 text-[14px] outline-none focus:border-accent"
-          />
-          <label htmlFor="em" className="mt-3.5 block text-[12px] text-muted">
-            Email
-          </label>
-          <input
-            id="em"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="you@example.com"
-            className="mt-1.5 w-full rounded-lg border border-line-strong bg-canvas px-3 py-2.5 text-[14px] outline-none focus:border-accent"
-          />
-          <button
-            type="submit"
-            className="mt-5 w-full rounded-lg bg-accent px-4 py-3 text-[14px] font-semibold text-canvas hover:opacity-90"
-          >
-            {mode === 'login' ? 'Log in' : 'Create account'}
-          </button>
-        </form>
-        <button
-          type="button"
-          onClick={() => setMode(null)}
-          className="mt-2.5 w-full py-1 text-[13px] text-faint hover:text-ink"
-        >
-          Cancel
-        </button>
-      </dialog>
     </>
   );
 }

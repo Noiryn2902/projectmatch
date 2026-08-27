@@ -1,0 +1,165 @@
+import Link from 'next/link';
+import { notFound, redirect } from 'next/navigation';
+
+import { getOrgBySlug } from '@/lib/data/orgs';
+import { getMyPersonId } from '@/lib/data/people';
+import { getCurrentUser } from '@/lib/supabase/server';
+
+import { createMyProfileAction } from './actions';
+
+const PLACEHOLDER = `Paste your résumé, LinkedIn summary, or a few lines about your work.
+
+Six years building web apps with React and TypeScript. Node.js services on
+PostgreSQL and Redis. Comfortable with Docker and CI. Some exposure to NLP.`;
+
+/**
+ * Onboarding: the step that turns an account into a person the engine can
+ * actually see.
+ *
+ * Signing in proves who you are; it does not put you on a roster. Until this
+ * row exists you cannot be staffed, cannot endorse a colleague, and appear in
+ * no ranking. So this asks for the minimum — a name, how much time you have —
+ * and offers the résumé shortcut for the part that would otherwise be forty
+ * checkboxes.
+ *
+ * Nothing here is scraped. It is your own text, pasted by you, matched
+ * against the same 82-skill vocabulary the rest of the product uses, and
+ * anything unrecognised is dropped rather than guessed at.
+ */
+export default async function MyProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+
+  const user = await getCurrentUser();
+  if (!user) redirect(`/auth/sign-in?next=/app/org/${slug}/me`);
+
+  const org = await getOrgBySlug(slug);
+  if (!org) notFound();
+
+  // Already on this roster — nothing to onboard.
+  const mine = await getMyPersonId(org.id);
+  if (mine) redirect(`/app/org/${slug}/people/${mine}`);
+
+  const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const suggested =
+    ((meta.full_name ?? meta.name ?? meta.user_name) as string | undefined)?.trim() ||
+    user.email?.split('@')[0] ||
+    '';
+
+  return (
+    <main className="pm-grain min-h-screen">
+      <header className="border-b border-line">
+        <div className="mx-auto flex max-w-[620px] items-center justify-between px-5 py-3">
+          <span className="font-display text-[17px] font-bold tracking-tight">{org.name}</span>
+          <Link href={`/app/org/${slug}`} className="text-[13px] text-muted hover:text-ink">
+            Skip for now
+          </Link>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-[620px] px-5 py-10">
+        <p className="text-[11px] tracking-wide text-faint uppercase">Step 2 of 2</p>
+        <h1 className="mt-1 font-display text-2xl font-bold text-balance text-ink">
+          Add yourself to {org.name}
+        </h1>
+        <p className="mt-2 text-[13px] text-muted">
+          Signed in as {user.email}. An account proves who you are — this is the profile teams get
+          matched against. Without it you appear in no ranking and cannot endorse anyone.
+        </p>
+
+        <form action={createMyProfileAction} className="mt-7 space-y-4">
+          <input type="hidden" name="orgId" value={org.id} />
+          <input type="hidden" name="slug" value={slug} />
+
+          <div>
+            <label htmlFor="name" className="block text-[12px] text-muted">
+              Your name
+            </label>
+            <input
+              id="name"
+              name="name"
+              required
+              defaultValue={suggested}
+              autoComplete="name"
+              className="mt-1.5 w-full rounded-full border border-line bg-panel px-4 py-2.5 text-[14px] outline-none transition-colors focus:border-accent"
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
+            <div>
+              <label htmlFor="title" className="block text-[12px] text-muted">
+                What you do
+              </label>
+              <input
+                id="title"
+                name="title"
+                placeholder="Backend engineer"
+                autoComplete="organization-title"
+                className="mt-1.5 w-full rounded-full border border-line bg-panel px-4 py-2.5 text-[14px] outline-none transition-colors focus:border-accent"
+              />
+            </div>
+            <div>
+              <label htmlFor="hoursPerWeek" className="block text-[12px] text-muted">
+                Hours a week
+              </label>
+              <input
+                id="hoursPerWeek"
+                name="hoursPerWeek"
+                type="number"
+                min={0}
+                max={40}
+                defaultValue={20}
+                className="mt-1.5 w-full rounded-full border border-line bg-panel px-4 py-2.5 text-[14px] outline-none transition-colors focus:border-accent"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="office" className="block text-[12px] text-muted">
+              Where you work <span className="text-faint">(optional)</span>
+            </label>
+            <input
+              id="office"
+              name="office"
+              placeholder="Bengaluru, or Remote"
+              className="mt-1.5 w-full rounded-full border border-line bg-panel px-4 py-2.5 text-[14px] outline-none transition-colors focus:border-accent"
+            />
+          </div>
+
+          <div className="rounded-xl border border-line border-l-2 border-l-accent bg-panel p-4">
+            <label htmlFor="resume" className="block text-[13px] font-medium text-ink">
+              Your skills, the fast way
+            </label>
+            <p className="mt-1 text-[12px] text-muted">
+              Paste your résumé or LinkedIn summary and we read the skills out of it, instead of
+              asking you to tick eighty boxes. Only skills in our vocabulary are kept — nothing is
+              invented, and nothing is scraped from anywhere.
+            </p>
+            <textarea
+              id="resume"
+              name="resume"
+              rows={7}
+              placeholder={PLACEHOLDER}
+              className="mt-3 w-full resize-y rounded-lg border border-line bg-canvas px-3.5 py-3 text-[12px] outline-none transition-colors focus:border-accent"
+            />
+            <p className="mt-2 text-[11px] text-faint">
+              These land as <span className="text-muted">from résumé</span>. The engine weights them
+              below a level a colleague has endorsed or the organisation has verified — you can be
+              endorsed later, and your score goes up when you are.
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full rounded-lg bg-accent px-4 py-3 text-[14px] font-semibold text-canvas transition-opacity hover:opacity-90"
+          >
+            Create my profile
+          </button>
+          <p className="text-center text-[11px] text-faint">
+            You will never be added to a team without being asked. Every seat goes out as an
+            invitation you can accept or decline.
+          </p>
+        </form>
+      </div>
+    </main>
+  );
+}

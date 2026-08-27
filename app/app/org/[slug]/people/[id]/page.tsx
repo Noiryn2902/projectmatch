@@ -39,6 +39,7 @@ export default async function PersonPage({
     claimed?: string;
     claim_error?: string;
     need_profile?: string;
+    welcome?: string;
   }>;
 }) {
   const { slug, id } = await params;
@@ -98,6 +99,14 @@ export default async function PersonPage({
           </span>
         </div>
 
+        {sp.welcome && (
+          <Banner tone="good">
+            <span className="font-medium">You are on the roster.</span> Your skills below came from
+            what you pasted, so they are marked <span className="text-faint">from résumé</span> — a
+            colleague endorsing one tells the engine to weight it higher. From here you can be
+            matched to projects, and every seat reaches you as an invitation you can decline.
+          </Banner>
+        )}
         {sp.claimed && (
           <Banner tone="good">This profile is now yours. You can endorse colleagues from here.</Banner>
         )}

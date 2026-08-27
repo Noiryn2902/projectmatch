@@ -18,7 +18,7 @@ import Categories from './Categories';
 import BigCta from './BigCta';
 import SiteFooter from './SiteFooter';
 import Directory from './Directory';
-import SiteNav from './SiteNav';
+import SiteNav, { type Viewer } from './SiteNav';
 import Workspace from './Workspace';
 
 const SORTS: { id: SortMode; label: string; short: string }[] = [
@@ -39,10 +39,12 @@ export default function TeamBuilder({
   people,
   companies,
   initialBrief,
+  viewer,
 }: {
   people: Person[];
   companies: Company[];
   initialBrief: Brief;
+  viewer?: Viewer | null;
 }) {
   // Nothing but the input shows until the user has actually asked for something.
   const [started, setStarted] = useState(false);
@@ -221,7 +223,7 @@ export default function TeamBuilder({
   if (!started) {
     return (
       <div className="pm-grain">
-        <SiteNav />
+        <SiteNav viewer={viewer} />
         <div className="relative min-h-[calc(100svh-104px)] overflow-hidden">
         <div className="absolute inset-0">
           {/* Poster carries the frame on its own, so the page is complete

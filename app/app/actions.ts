@@ -9,5 +9,10 @@ export async function createOrgAction(formData: FormData) {
   if (!name) return;
 
   const org = await createOrg(name);
-  redirect('/app/org/' + org.slug);
+
+  // Straight into building your own profile rather than an empty roster. An
+  // owner with no person row of their own cannot be staffed, cannot endorse
+  // anyone, and does not appear in a single ranking — so the first thing to
+  // do after founding an org is to join it.
+  redirect(`/app/org/${org.slug}/me`);
 }

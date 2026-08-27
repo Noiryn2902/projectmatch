@@ -283,6 +283,49 @@ export async function addExtractedSkills(
 }
 
 /**
+ * Creates the caller's *own* person row in an org and returns its id.
+ *
+ * Distinct from `addPerson`, which an admin uses to add somebody else: this
+ * sets `user_id` to the caller and stamps `claimed_at`, so the row is theirs
+ * from the moment it exists and never needs claiming. The `people_insert`
+ * policy allows exactly this — `is_org_member(org_id) and user_id = auth.uid()`
+ * — so no privileged path is involved.
+ */
+export async function createMyProfile(
+  orgId: string,
+  input: { name: string; title?: string; hoursPerWeek?: number; office?: string },
+): Promise<string> {
+  const supabase = await createServerSupabase();
+  const user = await getCurrentUser();
+  if (!user) throw new Error('You have to be signed in to create a profile.');
+
+  const { data, error } = await supabase
+    .from('people')
+    .insert({
+      org_id: orgId,
+      user_id: user.id,
+      name: input.name,
+      title: input.title ?? '',
+      office: input.office ?? '',
+      hours_per_week: input.hoursPerWeek ?? 0,
+      email: user.email ?? null,
+      claimed_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    if (error.code === '23505') throw new Error('You already have a profile in this organisation.');
+    if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
+      throw new Error('You are not a member of that organisation.');
+    }
+    throw new Error('Could not create your profile: ' + error.message);
+  }
+
+  return (data as { id: string }).id;
+}
+
+/**
  * Attaches the signed-in account to a roster row, through claim_person() —
  * see supabase/migrations/0005_claim_person.sql for why this is a
  * SECURITY DEFINER function and not an ordinary update.
