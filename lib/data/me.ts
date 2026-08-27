@@ -121,3 +121,78 @@ export async function getMyWork(orgId: string): Promise<MyWork> {
 
   return { personId, teams, invitations };
 }
+
+export interface Notice {
+  kind: 'invitation' | 'decline' | 'message';
+  text: string;
+  href: string;
+  at: string;
+}
+
+/**
+ * What has happened that you would want to know about.
+ *
+ * Three sources, deliberately: a seat waiting on your answer, a seat you
+ * offered that someone turned down, and conversation on a team you are on.
+ * The bell counts what is *actionable* — invitations — while the list also
+ * carries what is merely news, because a count that includes chatter trains
+ * people to ignore it.
+ */
+export async function getNotices(orgId: string, limit = 8): Promise<Notice[]> {
+  const personId = await getMyPersonId(orgId);
+  if (!personId) return [];
+
+  const supabase = await createServerSupabase();
+  const notices: Notice[] = [];
+
+  const { data: invited } = await supabase
+    .from('invitations')
+    .select('token, sent_at, seats ( project_roles ( title ), projects ( name ) )')
+    .eq('person_id', personId)
+    .eq('status', 'pending')
+    .order('sent_at', { ascending: false })
+    .limit(limit);
+
+  for (const r of (invited ?? []) as unknown as {
+    token: string;
+    sent_at: string;
+    seats: { project_roles: { title: string } | null; projects: { name: string } | null } | null;
+  }[]) {
+    notices.push({
+      kind: 'invitation',
+      text: `You were asked to take the ${r.seats?.project_roles?.title ?? 'a'} seat on ${
+        r.seats?.projects?.name || 'a project'
+      }`,
+      href: `/invite/${r.token}`,
+      at: r.sent_at,
+    });
+  }
+
+  // Declines on projects in this org. RLS already limits invitations to ones
+  // attached to a project you can see, so no extra ownership filter is needed.
+  const { data: declined } = await supabase
+    .from('invitations')
+    .select('responded_at, people ( name ), seats ( project_id, project_roles ( title ) )')
+    .eq('status', 'declined')
+    .not('responded_at', 'is', null)
+    .order('responded_at', { ascending: false })
+    .limit(limit);
+
+  for (const r of (declined ?? []) as unknown as {
+    responded_at: string;
+    people: { name: string } | null;
+    seats: { project_id: string; project_roles: { title: string } | null } | null;
+  }[]) {
+    if (!r.seats) continue;
+    notices.push({
+      kind: 'decline',
+      text: `${r.people?.name ?? 'Someone'} declined the ${
+        r.seats.project_roles?.title ?? 'a'
+      } seat`,
+      href: `/project/${r.seats.project_id}`,
+      at: r.responded_at,
+    });
+  }
+
+  return notices.sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
+}

@@ -130,6 +130,19 @@ export default async function MyProfilePage({
             />
           </div>
 
+          <div>
+            <label htmlFor="qualification" className="block text-[12px] text-muted">
+              Qualification <span className="text-faint">(optional)</span>
+            </label>
+            <input
+              id="qualification"
+              name="qualification"
+              maxLength={200}
+              placeholder="B.Tech Computer Science, VIT, 2021"
+              className="mt-1.5 w-full rounded-full border border-line bg-panel px-4 py-2.5 text-[14px] outline-none transition-colors focus:border-accent"
+            />
+          </div>
+
           <div className="rounded-xl border border-line border-l-2 border-l-accent bg-panel p-4">
             <p className="text-[13px] font-medium text-ink">Your skills, the fast way</p>
             <p className="mt-1 text-[12px] text-muted">

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import type { Notice } from '@/lib/data/me';
 import type { Org } from '@/lib/types';
 
 /**
@@ -26,6 +27,7 @@ export default function AppShell({
   action,
   back,
   notifications = 0,
+  notices = [],
   children,
 }: {
   org?: Pick<Org, 'name' | 'slug'> | null;
@@ -37,6 +39,8 @@ export default function AppShell({
   /** Where a nested page came from. Above the content, not in the nav. */
   back?: { href: string; label: string };
   notifications?: number;
+  /** Recent events for the bell panel. */
+  notices?: Notice[];
   children: React.ReactNode;
 }) {
   return (
@@ -78,23 +82,61 @@ export default function AppShell({
               );
             })}
 
-            <Link
-              href="/app"
-              title={notifications > 0 ? `${notifications} waiting on you` : 'Nothing waiting'}
-              aria-label={
-                notifications > 0 ? `${notifications} items waiting on you` : 'Notifications'
-              }
-              className="relative ml-1 grid size-8 place-items-center rounded-full text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-            >
-              <svg viewBox="0 0 16 16" className="size-4 fill-current" aria-hidden="true">
-                <path d="M8 1.5a4 4 0 0 0-4 4v2.6L2.8 10.3a.6.6 0 0 0 .5.9h9.4a.6.6 0 0 0 .5-.9L12 8.1V5.5a4 4 0 0 0-4-4Zm0 12.5a2 2 0 0 0 1.9-1.4H6.1A2 2 0 0 0 8 14Z" />
-              </svg>
-              {notifications > 0 && (
-                <span className="absolute top-1 right-1 grid size-3.5 place-items-center rounded-full bg-accent text-[9px] font-bold text-canvas">
-                  {notifications > 9 ? '9+' : notifications}
+            {/*
+              A details/summary dropdown, so the panel opens and closes with
+              no client component and no JavaScript at all. The badge counts
+              only what is actionable — invitations — while the list also
+              carries news, because a count that includes chatter trains
+              people to ignore it.
+            */}
+            <details className="relative ml-1">
+              <summary
+                title={notifications > 0 ? `${notifications} waiting on you` : 'Notifications'}
+                aria-label={
+                  notifications > 0 ? `${notifications} items waiting on you` : 'Notifications'
+                }
+                className="grid size-8 cursor-pointer list-none place-items-center rounded-full text-muted transition-colors hover:bg-panel-2 hover:text-ink [&::-webkit-details-marker]:hidden"
+              >
+                <span className="relative grid place-items-center">
+                  <svg viewBox="0 0 16 16" className="size-4 fill-current" aria-hidden="true">
+                    <path d="M8 1.5a4 4 0 0 0-4 4v2.6L2.8 10.3a.6.6 0 0 0 .5.9h9.4a.6.6 0 0 0 .5-.9L12 8.1V5.5a4 4 0 0 0-4-4Zm0 12.5a2 2 0 0 0 1.9-1.4H6.1A2 2 0 0 0 8 14Z" />
+                  </svg>
+                  {notifications > 0 && (
+                    <span className="absolute -top-1.5 -right-2 grid size-3.5 place-items-center rounded-full bg-accent text-[9px] font-bold text-canvas">
+                      {notifications > 9 ? '9+' : notifications}
+                    </span>
+                  )}
                 </span>
-              )}
-            </Link>
+              </summary>
+
+              <div className="absolute right-0 z-40 mt-2 w-[320px] overflow-hidden rounded-xl border border-line bg-panel shadow-lg">
+                {notices.length === 0 ? (
+                  <p className="px-4 py-5 text-[12px] text-faint">Nothing new.</p>
+                ) : (
+                  <ul className="max-h-[320px] overflow-y-auto">
+                    {notices.map((n, i) => (
+                      <li key={i} className="border-b border-line last:border-b-0">
+                        <Link
+                          href={n.href}
+                          className="block px-4 py-2.5 transition-colors hover:bg-panel-2"
+                        >
+                          <span
+                            className={`block text-[12px] ${
+                              n.kind === 'invitation' ? 'text-ink' : 'text-muted'
+                            }`}
+                          >
+                            {n.text}
+                          </span>
+                          <span className="mt-0.5 block text-[10px] text-faint">
+                            {new Date(n.at).toLocaleDateString()}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </details>
 
             {action && <span className="ml-1">{action}</span>}
 

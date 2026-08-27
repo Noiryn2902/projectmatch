@@ -169,6 +169,7 @@ export async function updateDetailsAction(formData: FormData) {
       name,
       title: String(formData.get('title') ?? '').trim(),
       office: String(formData.get('office') ?? '').trim(),
+      qualification: String(formData.get('qualification') ?? '').trim().slice(0, 200),
       hoursPerWeek: hoursRaw ? Math.max(0, Math.min(40, Number(hoursRaw) || 0)) : 0,
     });
   } catch (err) {

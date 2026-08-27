@@ -52,7 +52,8 @@ export async function createMyProfileAction(formData: FormData) {
     }
   }
 
-  const personId = await createMyProfile(orgId, { name, title, office, hoursPerWeek });
+  const qualification = String(formData.get('qualification') ?? '').trim().slice(0, 200);
+  const personId = await createMyProfile(orgId, { name, title, office, hoursPerWeek, qualification });
 
   let added = 0;
   let source: 'ai' | 'fallback' = 'fallback';

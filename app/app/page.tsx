@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import AppShell from '@/components/app/AppShell';
 import Avatar from '@/components/Avatar';
 import { listOrgsForUser } from '@/lib/data/orgs';
-import { getMyWork } from '@/lib/data/me';
+import { getMyWork, getNotices } from '@/lib/data/me';
 import { getPerson } from '@/lib/data/people';
 import { listProjects } from '@/lib/data/projects';
 import { getCurrentUser } from '@/lib/supabase/server';
@@ -28,13 +28,18 @@ export default async function AppHome() {
   if (orgs.length === 0) return <Onboard email={user.email ?? ''} />;
 
   const org = orgs[0];
-  const [work, projects] = await Promise.all([getMyWork(org.id), listProjects(org.id)]);
+  const [work, projects, notices] = await Promise.all([
+    getMyWork(org.id),
+    listProjects(org.id),
+    getNotices(org.id),
+  ]);
   const me = work.personId ? await getPerson(work.personId) : null;
 
   return (
     <AppShell
       org={org}
       notifications={work.invitations.length}
+      notices={notices}
       tabs={[
         { href: '/app', label: 'Home' },
         { href: `/app/org/${org.slug}`, label: 'Organisation' },

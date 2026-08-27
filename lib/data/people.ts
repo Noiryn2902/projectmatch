@@ -30,6 +30,7 @@ interface PersonRow {
   name: string;
   title: string;
   office: string;
+  qualification: string | null;
   utc_offset: number | string;
   years_exp: number;
   seniority: number;
@@ -47,7 +48,7 @@ interface PersonRow {
 
 const SELECT = `
   id, org_id, name, title, office, utc_offset, years_exp, seniority,
-  hours_per_week, interests, email, slack, linkedin, github, photo, hue,
+  hours_per_week, interests, email, slack, linkedin, github, photo, hue, qualification,
   open_to_projects,
   person_skills ( skill_id, level, provenance, last_used_at, endorsements ( id ) )
 `;
@@ -81,6 +82,7 @@ function toPerson(row: PersonRow): Person {
     // docs/IMPROVEMENTS.md before changing this.
     companyId: row.org_id,
     office: row.office,
+    qualification: row.qualification ?? '',
     // Postgres hands numeric() back as a string.
     utcOffset: Number(row.utc_offset),
     yearsExp: row.years_exp,
@@ -294,7 +296,7 @@ export async function addExtractedSkills(
  */
 export async function createMyProfile(
   orgId: string,
-  input: { name: string; title?: string; hoursPerWeek?: number; office?: string },
+  input: { name: string; title?: string; hoursPerWeek?: number; office?: string; qualification?: string },
 ): Promise<string> {
   const supabase = await createServerSupabase();
   const user = await getCurrentUser();
@@ -308,6 +310,7 @@ export async function createMyProfile(
       name: input.name,
       title: input.title ?? '',
       office: input.office ?? '',
+      qualification: input.qualification ?? '',
       hours_per_week: input.hoursPerWeek ?? 0,
       email: user.email ?? null,
       claimed_at: new Date().toISOString(),
@@ -483,7 +486,7 @@ export async function getPerson(id: string): Promise<Person | null> {
  */
 export async function updatePersonDetails(
   personId: string,
-  input: { name: string; title: string; office: string; hoursPerWeek: number },
+  input: { name: string; title: string; office: string; hoursPerWeek: number; qualification: string },
 ): Promise<void> {
   const supabase = await createServerSupabase();
   const { error } = await supabase
@@ -492,6 +495,7 @@ export async function updatePersonDetails(
       name: input.name,
       title: input.title,
       office: input.office,
+      qualification: input.qualification,
       hours_per_week: input.hoursPerWeek,
     })
     .eq('id', personId);

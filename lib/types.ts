@@ -60,6 +60,8 @@ export interface Person {
   title: string;
   companyId: string;
   office: string;
+  /** Free text, shown on a profile. Never read by the engine. */
+  qualification?: string;
   utcOffset: number;
   yearsExp: number;
   seniority: number;

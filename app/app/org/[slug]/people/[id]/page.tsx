@@ -92,6 +92,9 @@ export default async function PersonPage({
               )}
             </h1>
             <p className="text-[13px] text-muted">{person.title || 'No title yet'}</p>
+            {person.qualification && (
+              <p className="text-[12px] text-faint">{person.qualification}</p>
+            )}
             {(isMe || canEdit) && (
               <form
                 action={setAvatarAction}
@@ -175,6 +178,16 @@ export default async function PersonPage({
                     min={0}
                     max={40}
                     defaultValue={person.hoursPerWeek}
+                    className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="block text-[11px] text-muted">Qualification</span>
+                  <input
+                    name="qualification"
+                    maxLength={200}
+                    defaultValue={person.qualification ?? ''}
+                    placeholder="B.Tech Computer Science, VIT, 2021"
                     className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
                   />
                 </label>

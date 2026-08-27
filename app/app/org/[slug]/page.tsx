@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 
 import AppShell from '@/components/app/AppShell';
 import Avatar from '@/components/Avatar';
-import { getMyWork } from '@/lib/data/me';
+import { getMyWork, getNotices } from '@/lib/data/me';
 import { getOrgBySlug } from '@/lib/data/orgs';
 import { getMyPersonId, listPeople } from '@/lib/data/people';
 import { listProjects } from '@/lib/data/projects';
@@ -32,11 +32,12 @@ export default async function OrgRosterPage({
   const org = await getOrgBySlug(slug);
   if (!org) notFound();
 
-  const [people, projects, myPersonId, work] = await Promise.all([
+  const [people, projects, myPersonId, work, notices] = await Promise.all([
     listPeople(org.id),
     listProjects(org.id),
     getMyPersonId(org.id),
     getMyWork(org.id),
+    getNotices(org.id),
   ]);
   const importedCount = imported ? Number(imported) : 0;
 
@@ -44,6 +45,7 @@ export default async function OrgRosterPage({
     <AppShell
       org={org}
       notifications={work.invitations.length}
+      notices={notices}
       tabs={[
         { href: '/app', label: 'Home' },
         { href: `/app/org/${org.slug}`, label: 'Organisation' },
