@@ -34,6 +34,22 @@ export interface SeatView {
   person: Person | null;
 }
 
+/**
+ * A seat that is open right now and whose most recent invitation was declined.
+ *
+ * This is what turns a decline from a silent database update into something
+ * the product acts on: the owner comes back to a seat that says who said no
+ * and a way straight into a fresh ranking, rather than having to notice the
+ * seat is open again and work out why.
+ */
+export interface DeclineView {
+  /** The most recent person to decline this seat. */
+  personName: string;
+  respondedAt: string;
+  /** Everyone who has declined this seat — used to push them down the re-rank. */
+  personIds: string[];
+}
+
 export interface ProjectDetail extends ProjectSummary {
   brief: Brief;
   roles: Role[];
@@ -50,6 +66,11 @@ export interface ProjectDetail extends ProjectSummary {
   seats: Record<string, SeatView>;
   /** Spoken for but unconfirmed — excluded from candidate lists elsewhere. */
   invitedPersonIds: string[];
+  /**
+   * Open seats whose last invitation was declined, by role id. The cue for
+   * the interface to propose someone else against the team as it now stands.
+   */
+  declines: Record<string, DeclineView>;
 }
 
 interface RequirementRow {
@@ -161,6 +182,51 @@ export async function getProject(id: string): Promise<ProjectDetail | null> {
     };
   }
 
+  // A decline only matters while the seat is still open. Once it has been
+  // re-invited or filled another way the decline is history, not a to-do.
+  const openSeats = roleRows
+    .map((r) => ({ roleId: r.id, seat: seatByRole.get(r.id) }))
+    .filter((x): x is { roleId: string; seat: SeatRow } => x.seat?.state === 'open');
+
+  const declines: Record<string, DeclineView> = {};
+  if (openSeats.length > 0) {
+    const seatToRole = new Map(openSeats.map((x) => [x.seat.id, x.roleId]));
+    const { data: declinedRows, error: declErr } = await supabase
+      .from('invitations')
+      .select('seat_id, person_id, responded_at, people ( name )')
+      .in(
+        'seat_id',
+        openSeats.map((x) => x.seat.id),
+      )
+      .eq('status', 'declined')
+      .order('responded_at', { ascending: false });
+    if (declErr) throw new Error('Could not load invitation history: ' + declErr.message);
+
+    const declRows = (declinedRows ?? []) as unknown as {
+      seat_id: string;
+      person_id: string;
+      responded_at: string;
+      people: { name: string } | null;
+    }[];
+
+    // Rows arrive most-recent-first, so the first one seen per seat is the
+    // latest decline; the rest just accumulate the ids to push down the rank.
+    for (const dr of declRows) {
+      const roleId = seatToRole.get(dr.seat_id);
+      if (!roleId) continue;
+      const existing = declines[roleId];
+      if (existing) {
+        if (!existing.personIds.includes(dr.person_id)) existing.personIds.push(dr.person_id);
+      } else {
+        declines[roleId] = {
+          personName: dr.people?.name ?? 'Someone',
+          respondedAt: dr.responded_at,
+          personIds: [dr.person_id],
+        };
+      }
+    }
+  }
+
   const brief: Brief = {
     text: row.brief_text,
     roles,
@@ -181,6 +247,7 @@ export async function getProject(id: string): Promise<ProjectDetail | null> {
     health: teamHealth(brief, orderedMembers, roles.length),
     seats,
     invitedPersonIds,
+    declines,
   };
 }
 

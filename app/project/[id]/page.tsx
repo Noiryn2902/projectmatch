@@ -57,8 +57,11 @@ export default async function ProjectPage({
   const demoOrg = await getDemoOrg();
   const readOnly = demoOrg !== null && project.orgId === demoOrg.id;
 
-  const { brief, roles, health, seats } = project;
+  const { brief, roles, health, seats, declines } = project;
   const pct = Math.round(health.coverage * 100);
+  // A decline the owner can still do something about — the demo org can't be
+  // staffed at all, so there is nothing to surface there.
+  const declineCount = readOnly ? 0 : Object.keys(declines).length;
 
   return (
     <main className="pm-grain min-h-screen">
@@ -103,6 +106,19 @@ export default async function ProjectPage({
           </div>
         )}
 
+        {declineCount > 0 && (
+          <div className="mt-6 rounded-xl border border-line border-l-2 border-l-warn bg-panel px-4 py-3.5">
+            <p className="text-[13px] font-medium text-ink">
+              {declineCount === 1
+                ? 'A seat was declined and is open again'
+                : `${declineCount} seats were declined and are open again`}
+            </p>
+            <p className="mt-1 text-[12px] text-muted">
+              Open one below to see the roster re-ranked against the team as it now stands.
+            </p>
+          </div>
+        )}
+
         <div className="mt-8 grid gap-4 sm:grid-cols-[1fr_260px]">
           <section className="rounded-xl border border-line bg-panel">
             <ul>
@@ -110,6 +126,7 @@ export default async function ProjectPage({
                 const seat = seats[role.id] ?? { state: 'open' as const, person: null };
                 const person = seat.person;
                 const awaiting = seat.state === 'invited';
+                const declined = seat.state === 'open' ? declines[role.id] : undefined;
                 return (
                   <li key={role.id} className="border-b border-line px-4 py-3 last:border-b-0">
                     <div className="flex items-center gap-3">
@@ -127,14 +144,20 @@ export default async function ProjectPage({
                         <p className="text-[13px] font-medium">{role.title}</p>
                         <p
                           className={`truncate text-[12px] ${
-                            seat.state === 'filled' ? 'text-muted' : 'text-faint italic'
+                            seat.state === 'filled'
+                              ? 'text-muted'
+                              : declined
+                                ? 'text-warn'
+                                : 'text-faint italic'
                           }`}
                         >
                           {awaiting && person
                             ? person.name + ' — invited, awaiting reply'
                             : person
                               ? person.name
-                              : 'Open seat'}
+                              : declined
+                                ? `${declined.personName} declined — seat reopened`
+                                : 'Open seat'}
                         </p>
                       </div>
                       <span className="shrink-0 text-[11px] text-faint">
@@ -142,9 +165,19 @@ export default async function ProjectPage({
                       </span>
                       <Link
                         href={`/project/${project.id}/staff/${role.id}`}
-                        className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-[12px] text-muted transition-colors hover:border-line-strong hover:text-ink"
+                        className={`shrink-0 rounded-lg border px-3 py-1.5 text-[12px] transition-colors ${
+                          declined
+                            ? 'border-warn/40 text-warn hover:border-warn'
+                            : 'border-line text-muted hover:border-line-strong hover:text-ink'
+                        }`}
                       >
-                        {readOnly ? 'See ranking' : seat.state === 'filled' ? 'Change' : 'Find someone'}
+                        {readOnly
+                          ? 'See ranking'
+                          : declined
+                            ? 'Ask someone else'
+                            : seat.state === 'filled'
+                              ? 'Change'
+                              : 'Find someone'}
                       </Link>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5 pl-11">

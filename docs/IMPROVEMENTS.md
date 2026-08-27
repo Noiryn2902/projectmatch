@@ -506,10 +506,34 @@ and the invitation row showed `accepted` with a real timestamp.
 
 **Not done, stated rather than left implicit:** no email delivery — the link is shown on the
 project page for now, to be copied and sent by hand. No revoke button. No UI listing pending
-invitations. Chat still does not exist to unlock. **Re-ranking on decline isn't automatic yet** —
-the seat reopens, but going back to the staffing page to see the new ranking is a manual step, not
-a proposal the product makes; that is the natural next slice, since the ranking page it needs
-already exists.
+invitations. Chat still does not exist to unlock.
+
+**Done (2026-08-27) — the decline proposes the next move.** A decline used to be a silent database
+update: `respond_to_invitation()` reopened the seat, and the owner had to notice it was open again
+and work out why. Now `getProject()` carries a `declines` map — for every seat that is *currently
+open* and whose most recent invitation was declined, the name of who declined, when, and every id
+that has declined it. Built from one extra query against `invitations` (RLS already lets an org
+member read their project's invitations), gated on `state = 'open'` so a re-invited or otherwise
+filled seat drops the cue.
+
+The interface acts on it in three places: the project page shows a banner (`N seats were declined
+and are open again`) and turns each declined seat's row amber with an **Ask someone else** action
+instead of the plain *Find someone*; the staffing page opens with a banner naming who declined and
+stating the ranking below is computed against the team as it now stands; and in that ranking the
+people who declined this seat are kept visible — a small roster can't hide anyone — but sorted to
+the bottom of their group and shown a muted **Declined** pill in place of the Invite button. No
+engine change, no migration: the ranking already re-runs live on every page load against
+`project.team`, and the seat was never *filled*, so there is no coverage number that moved and none
+is invented. All 51 engine tests still pass; `npm run verify` green.
+
+Verified: `npm run verify` (typecheck + lint + 51 tests + build) passes, and a read-only probe
+against the live database confirmed the new embedded PostgREST query (`invitations` →
+`people ( name )`, filtered on `status = 'declined'`, ordered by `responded_at`) parses and runs.
+A full click-through of decline → re-rank against live data with a real session is still to be
+done through the UI.
+
+**Still deferred after this slice:** email delivery, a revoke button, a pending-invitations list,
+and chat unlocking on acceptance.
 
 ### Phase 3 — Skills you can trust
 

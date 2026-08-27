@@ -56,6 +56,15 @@ export default async function StaffSeatPage({
     minHours: 0,
   });
 
+  // If this seat is open because someone declined it, that person still
+  // appears in the ranking — a small roster can't afford to hide anyone — but
+  // asking them again is not the next move, so they sink to the bottom and
+  // lose the Invite button. The ranking itself is already computed fresh
+  // against `project.team` as it stands right now; the decline is just what
+  // sent the owner back here to look at it.
+  const decline = project.declines[role.id];
+  const declinedIds = new Set(decline?.personIds ?? []);
+
   /*
    * Two different questions, and conflating them produced a genuinely wrong
    * ranking here before:
@@ -77,6 +86,9 @@ export default async function StaffSeatPage({
    * everyone, which is where this went wrong.
    */
   const candidates = [...ranked].sort((a, b) => {
+    const aDecl = declinedIds.has(a.person.id);
+    const bDecl = declinedIds.has(b.person.id);
+    if (aDecl !== bDecl) return aDecl ? 1 : -1;
     const aFits = a.roleMatch >= SEAT_FLOOR;
     const bFits = b.roleMatch >= SEAT_FLOOR;
     if (aFits !== bFits) return aFits ? -1 : 1;
@@ -119,6 +131,23 @@ export default async function StaffSeatPage({
           ))}
         </div>
 
+        {decline && (
+          <div className="mt-5 rounded-xl border border-line border-l-2 border-l-warn bg-panel px-4 py-3.5">
+            <p className="text-[13px] font-medium text-ink">
+              {decline.personName} declined this seat
+              {decline.personIds.length > 1 &&
+                `, along with ${decline.personIds.length - 1} other${
+                  decline.personIds.length - 1 === 1 ? '' : 's'
+                }`}
+              .
+            </p>
+            <p className="mt-1 text-[12px] text-muted">
+              The seat is open again. Below is the roster ranked against the team as it stands right
+              now — whoever declined is kept in view but moved to the end.
+            </p>
+          </div>
+        )}
+
         <p className="mt-5 text-[12px] text-muted">
           Among people who can hold this seat, ranked by what they add to the team as it already
           stands — not by how strong they look on their own.
@@ -136,6 +165,7 @@ export default async function StaffSeatPage({
                   key={c.person.id}
                   candidate={c}
                   isSeated={c.person.id === seatedId}
+                  hasDeclined={declinedIds.has(c.person.id)}
                   projectId={project.id}
                   roleId={role.id}
                   readOnly={readOnly}
@@ -159,6 +189,7 @@ export default async function StaffSeatPage({
                     key={c.person.id}
                     candidate={c}
                     isSeated={c.person.id === seatedId}
+                    hasDeclined={declinedIds.has(c.person.id)}
                     projectId={project.id}
                     roleId={role.id}
                     readOnly={readOnly}
@@ -187,12 +218,14 @@ export default async function StaffSeatPage({
 function CandidateRow({
   candidate,
   isSeated,
+  hasDeclined,
   projectId,
   roleId,
   readOnly,
 }: {
   candidate: Candidate;
   isSeated: boolean;
+  hasDeclined: boolean;
   projectId: string;
   roleId: string;
   readOnly: boolean;
@@ -241,6 +274,10 @@ function CandidateRow({
             Remove
           </button>
         </form>
+      ) : hasDeclined ? (
+        <span className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-[12px] text-faint">
+          Declined
+        </span>
       ) : (
         <form action={inviteAction} className="shrink-0">
           <input type="hidden" name="projectId" value={projectId} />
