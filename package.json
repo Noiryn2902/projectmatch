@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "seed": "node scripts/seed.mjs",
-    "test": "tsx scripts/test-engine.ts",
+    "test": "tsx scripts/test-engine.ts && tsx scripts/test-assistant.ts",
     "test:import": "tsx scripts/test-import.ts",
     "test:email": "tsx scripts/test-email.ts",
     "test:extract": "tsx scripts/test-extract.ts",

@@ -10,7 +10,7 @@ type Status = 'idle' | 'sending' | 'sent' | { redirecting: Provider };
 const OAUTH_PROVIDERS: { id: Provider; label: string; icon: React.ReactNode }[] = [
   {
     id: 'google',
-    label: 'Continue with Google',
+    label: 'Google',
     icon: (
       <svg viewBox="0 0 18 18" className="size-4" aria-hidden="true">
         <path
@@ -34,7 +34,7 @@ const OAUTH_PROVIDERS: { id: Provider; label: string; icon: React.ReactNode }[] 
   },
   {
     id: 'linkedin_oidc',
-    label: 'Continue with LinkedIn',
+    label: 'LinkedIn',
     icon: (
       <svg viewBox="0 0 16 16" className="size-4 fill-current text-[#0A66C2]" aria-hidden="true">
         <path d="M14.82 0H1.18C.53 0 0 .52 0 1.16v13.68C0 15.48.53 16 1.18 16h13.64c.65 0 1.18-.52 1.18-1.16V1.16C16 .52 15.47 0 14.82 0ZM4.75 13.4H2.38V6h2.37v7.4Zm-1.19-8.4a1.37 1.37 0 1 1 0-2.75 1.37 1.37 0 0 1 0 2.75Zm10.84 8.4h-2.37V9.8c0-.86-.02-1.97-1.2-1.97-1.2 0-1.39.94-1.39 1.91v3.66H7.06V6h2.28v1.01h.03c.32-.6 1.09-1.2 2.24-1.2 2.39 0 2.83 1.57 2.83 3.62v3.97Z" />
@@ -58,10 +58,33 @@ const OAUTH_PROVIDERS: { id: Provider; label: string; icon: React.ReactNode }[] 
  * require DLT registration with the telecom regulator before an OTP SMS can
  * be sent at all. Email already reaches any phone with a mail app, for free.
  */
-export default function SignInForm({ initialError }: { initialError?: string }) {
+export default function SignInForm({
+  initialError,
+  mode = 'in',
+  next = '/app',
+}: {
+  initialError?: string;
+  /** 'in' for an account that exists, 'up' for a first visit. */
+  mode?: 'in' | 'up';
+  /** Where to land once the session exists. */
+  next?: string;
+}) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState(initialError ?? '');
+
+  /*
+   * Sign in and sign up are the same three calls. Supabase creates the user
+   * on first sight and returns the existing one after that, and neither
+   * magic links nor OAuth give us a way to say "only if new" — so the
+   * difference is the words on the button and where you land, not the
+   * mechanism. Pretending otherwise would mean a second failure mode
+   * ("that account already exists") that this product does not need.
+   */
+  const verb = mode === 'up' ? 'Sign up with' : 'Continue with';
+
+  const callback = (origin: string) =>
+    origin + '/auth/callback?next=' + encodeURIComponent(next);
 
   async function sendMagicLink(e: React.FormEvent) {
     e.preventDefault();
@@ -71,7 +94,7 @@ export default function SignInForm({ initialError }: { initialError?: string }) 
     const supabase = createBrowserSupabase();
     const { error: sendError } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin + '/auth/callback' },
+      options: { emailRedirectTo: callback(window.location.origin) },
     });
 
     if (sendError) {
@@ -89,7 +112,7 @@ export default function SignInForm({ initialError }: { initialError?: string }) 
     const supabase = createBrowserSupabase();
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin + '/auth/callback' },
+      options: { redirectTo: callback(window.location.origin) },
     });
 
     if (oauthError) {
@@ -102,8 +125,8 @@ export default function SignInForm({ initialError }: { initialError?: string }) 
   if (status === 'sent') {
     return (
       <div className="mt-6 rounded-lg border border-line bg-panel p-4 text-sm text-ink">
-        Check <span className="font-medium">{email}</span> for a sign-in link. It expires shortly,
-        so use it soon after it arrives.
+        Check <span className="font-medium">{email}</span> for your link. It expires shortly, so
+        use it soon after it arrives.
       </div>
     );
   }
@@ -121,7 +144,7 @@ export default function SignInForm({ initialError }: { initialError?: string }) 
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-ink transition-colors hover:border-line-strong disabled:opacity-60"
         >
           {p.icon}
-          {redirecting === p.id ? 'Redirecting…' : p.label}
+          {redirecting === p.id ? 'Redirecting…' : `${verb} ${p.label}`}
         </button>
       ))}
 
@@ -134,7 +157,7 @@ export default function SignInForm({ initialError }: { initialError?: string }) 
         <svg viewBox="0 0 16 16" className="size-4 fill-current" aria-hidden="true">
           <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.5 7.5 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
         </svg>
-        {redirecting === 'github' ? 'Redirecting…' : 'Continue with GitHub'}
+        {redirecting === 'github' ? 'Redirecting…' : `${verb} GitHub`}
       </button>
 
       <div className="flex items-center gap-3 py-1 text-[11px] tracking-wide text-muted uppercase">
@@ -158,7 +181,7 @@ export default function SignInForm({ initialError }: { initialError?: string }) 
           disabled={status === 'sending' || !email}
           className="w-full rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-panel transition-opacity hover:opacity-90 disabled:opacity-60"
         >
-          {status === 'sending' ? 'Sending…' : 'Send a sign-in link'}
+          {status === 'sending' ? 'Sending…' : mode === 'up' ? 'Email me a link' : 'Send a sign-in link'}
         </button>
       </form>
 

@@ -12,7 +12,7 @@ import {
   removeEndorsement,
   updatePersonDetails,
 } from '@/lib/data/people';
-import { AvatarError, setAvatar } from '@/lib/data/avatars';
+import { AvatarError, clearAvatar, setAvatar } from '@/lib/data/avatars';
 import { extractSkillsSmart } from '@/lib/skills/ai-extract';
 import { GitHubError, skillsFromGitHub } from '@/lib/skills/github';
 import { DocumentError, readDocument } from '@/lib/skills/read-document';
@@ -103,11 +103,16 @@ export async function setAvatarAction(formData: FormData) {
   const slug = String(formData.get('slug') ?? '');
   const personId = String(formData.get('personId') ?? '');
   const file = formData.get('photo');
-  if (!slug || !personId || !(file instanceof File) || file.size === 0) return;
+  const remove = String(formData.get('removePhoto') ?? '') === '1';
+  const picked = file instanceof File && file.size > 0;
+  if (!slug || !personId || (!picked && !remove)) return;
 
   let error: string | null = null;
   try {
-    await setAvatar(personId, file);
+    // A chosen file wins over the removal flag: the cross clears its own
+    // pending pick client-side, so both arriving together means "replace".
+    if (picked) await setAvatar(personId, file as File);
+    else await clearAvatar(personId);
   } catch (err) {
     error = err instanceof AvatarError ? err.message : 'Could not update the photo.';
   }
@@ -165,12 +170,21 @@ export async function updateDetailsAction(formData: FormData) {
   const hoursRaw = String(formData.get('hoursPerWeek') ?? '');
   let error: string | null = null;
   try {
+    const str = (key: string) => String(formData.get(key) ?? '').trim();
     await updatePersonDetails(personId, {
       name,
-      title: String(formData.get('title') ?? '').trim(),
-      office: String(formData.get('office') ?? '').trim(),
-      qualification: String(formData.get('qualification') ?? '').trim().slice(0, 200),
+      title: str('title'),
+      office: str('office'),
+      qualification: str('qualification').slice(0, 200),
       hoursPerWeek: hoursRaw ? Math.max(0, Math.min(40, Number(hoursRaw) || 0)) : 0,
+      email: str('email'),
+      phone: str('phone'),
+      address: str('address'),
+      gender: str('gender'),
+      linkedin: str('linkedin'),
+      github: str('github'),
+      ...(str('yearsExp') ? { yearsExp: Number(str('yearsExp')) || 0 } : {}),
+      ...(str('seniority') ? { seniority: Number(str('seniority')) || 1 } : {}),
     });
   } catch (err) {
     error = err instanceof Error ? err.message : 'Could not save your changes.';

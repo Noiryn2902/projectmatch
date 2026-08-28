@@ -11,7 +11,7 @@ import { listProjects } from '@/lib/data/projects';
 import { addPersonAction } from './actions';
 
 /**
- * The org: its projects, and the roster they get staffed from.
+ * A workspace: its projects, and the people they get staffed from.
  *
  * A 404 here does double duty: it is what a genuinely unknown slug produces,
  * and it is also what RLS silently returns for an org you are not a member
@@ -24,10 +24,10 @@ export default async function OrgRosterPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ imported?: string; import_denied?: string }>;
+  searchParams: Promise<{ imported?: string; import_denied?: string; empty?: string }>;
 }) {
   const { slug } = await params;
-  const { imported, import_denied: importDenied } = await searchParams;
+  const { imported, import_denied: importDenied, empty } = await searchParams;
 
   const org = await getOrgBySlug(slug);
   if (!org) notFound();
@@ -48,7 +48,7 @@ export default async function OrgRosterPage({
       notices={notices}
       tabs={[
         { href: '/app', label: 'Home' },
-        { href: `/app/org/${org.slug}`, label: 'Organisation' },
+        { href: `/app/org/${org.slug}`, label: 'People' },
       ]}
       active={`/app/org/${org.slug}`}
       action={
@@ -68,7 +68,7 @@ export default async function OrgRosterPage({
           >
             <span>
               <span className="block text-[13px] font-medium text-ink">
-                You are not on this roster yet
+                You are not on this list yet
               </span>
               <span className="mt-0.5 block text-[12px] text-muted">
                 Add yourself so teams can find you.
@@ -106,8 +106,21 @@ export default async function OrgRosterPage({
           )}
         </section>
 
+        {empty && (
+          <div className="mt-6 rounded-xl border border-line border-l-2 border-l-accent bg-panel px-4 py-3.5">
+            <p className="text-[13px] font-medium text-ink">
+              Add some people before you build a team.
+            </p>
+            <p className="mt-1 text-[12px] text-muted">
+              ProjectMatch picks a team out of the people you have. There is nobody here yet, so
+              there is nothing to pick from — add a few below, or import a list, and then start
+              your project.
+            </p>
+          </div>
+        )}
+
         <div className="mt-10 flex items-baseline justify-between">
-          <h2 className="font-display text-lg font-semibold text-ink">Roster</h2>
+          <h2 className="font-display text-lg font-semibold text-ink">People</h2>
           <div className="flex items-baseline gap-3">
             <span className="text-[12px] text-muted">
               {people.length} {people.length === 1 ? 'person' : 'people'}
@@ -123,12 +136,12 @@ export default async function OrgRosterPage({
 
         {importedCount > 0 && (
           <div className="mt-4 rounded-xl border border-line border-l-2 border-l-good bg-panel px-4 py-3 text-[13px] text-ink">
-            Imported {importedCount} {importedCount === 1 ? 'person' : 'people'} into the roster.
+            Imported {importedCount} {importedCount === 1 ? 'person' : 'people'} to your people.
           </div>
         )}
         {importDenied && (
           <div className="mt-4 rounded-xl border border-line border-l-2 border-l-warn bg-panel px-4 py-3 text-[13px] text-ink">
-            Importing a roster is limited to organisation admins.
+            Only an admin can import people.
           </div>
         )}
 
@@ -151,7 +164,7 @@ export default async function OrgRosterPage({
                         {p.office && <span className="text-faint"> &middot; {p.office}</span>}
                       </p>
                     </div>
-                    {/* A roster is only a contact list if you can reach people. */}
+                    {/* A list of people is only useful if you can reach them. */}
                     {p.contact.email && (
                       <span className="hidden shrink-0 truncate text-[11px] text-faint sm:block sm:max-w-[190px]">
                         {p.contact.email}
@@ -199,7 +212,7 @@ export default async function OrgRosterPage({
               type="submit"
               className="w-full rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-panel transition-opacity hover:opacity-90"
             >
-              Add to roster
+              Add person
             </button>
           </form>
           <p className="mt-3 text-[11px] text-faint">
@@ -208,7 +221,7 @@ export default async function OrgRosterPage({
               href={`/app/org/${org.slug}/import`}
               className="text-accent underline underline-offset-2"
             >
-              import a whole roster
+              import a whole list
             </Link>{' '}
             from a spreadsheet.
           </p>

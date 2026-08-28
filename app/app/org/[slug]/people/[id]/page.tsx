@@ -2,6 +2,7 @@ import AppShell from '@/components/app/AppShell';
 import { notFound } from 'next/navigation';
 
 import Avatar from '@/components/Avatar';
+import PhotoField from '@/components/PhotoField';
 import { getMyRole, getOrgBySlug } from '@/lib/data/orgs';
 import {
   getMyPersonId,
@@ -11,6 +12,7 @@ import {
 } from '@/lib/data/people';
 import { labelOf } from '@/lib/engine/graph';
 import { AVATAR_ACCEPTED } from '@/lib/data/avatars';
+import { externalUrl } from '@/lib/url';
 import { ACCEPTED } from '@/lib/skills/read-document';
 import type { SkillProvenance } from '@/lib/types';
 
@@ -95,28 +97,6 @@ export default async function PersonPage({
             {person.qualification && (
               <p className="text-[12px] text-faint">{person.qualification}</p>
             )}
-            {(isMe || canEdit) && (
-              <form
-                action={setAvatarAction}
-                className="mt-1.5 flex items-center gap-2 text-[11px]"
-              >
-                <input type="hidden" name="slug" value={slug} />
-                <input type="hidden" name="personId" value={person.id} />
-                <input
-                  type="file"
-                  name="photo"
-                  accept={AVATAR_ACCEPTED}
-                  aria-label="Profile photo"
-                  className="w-40 text-[11px] text-muted file:mr-2 file:rounded-full file:border-0 file:bg-panel-2 file:px-2 file:py-1 file:text-[11px] file:text-ink hover:file:bg-line"
-                />
-                <button
-                  type="submit"
-                  className="rounded-full border border-line px-2 py-0.5 text-muted transition-colors hover:border-line-strong hover:text-ink"
-                >
-                  {person.photo ? 'Replace' : 'Upload'}
-                </button>
-              </form>
-            )}
           </div>
         </div>
 
@@ -128,8 +108,37 @@ export default async function PersonPage({
             UTC{person.utcOffset >= 0 ? '+' : ''}
             {person.utcOffset}
           </span>
+          {person.gender && <span>{person.gender}</span>}
           {person.contact.email && <span className="truncate">{person.contact.email}</span>}
+          {person.contact.phone && <span>{person.contact.phone}</span>}
+          {externalUrl(person.contact.linkedin) && (
+            <a
+              href={externalUrl(person.contact.linkedin)!}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="text-accent hover:underline"
+            >
+              LinkedIn
+            </a>
+          )}
+          {person.contact.github && (
+            <a
+              href={`https://github.com/${person.contact.github}`}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="text-accent hover:underline"
+            >
+              GitHub
+            </a>
+          )}
         </div>
+
+        {person.address && (isMe || canEdit) && (
+          <p className="mt-1.5 text-[12px] text-faint">
+            {person.address}
+            <span className="ml-2 text-[11px]">· only you and an admin see this</span>
+          </p>
+        )}
 
         {/*
           Collapsed by default. Editing is rare next to reading, and a form
@@ -141,6 +150,39 @@ export default async function PersonPage({
             <summary className="cursor-pointer px-4 py-2.5 text-[12px] text-muted select-none hover:text-ink">
               Edit details
             </summary>
+            <form
+              action={setAvatarAction}
+              className="flex flex-wrap items-end gap-3 border-t border-line px-4 py-3 text-[11px]"
+            >
+              <input type="hidden" name="slug" value={slug} />
+              <input type="hidden" name="personId" value={person.id} />
+              <div className="min-w-0 flex-1">
+                <PhotoField
+                  accept={AVATAR_ACCEPTED}
+                  current={
+                    person.photo
+                      ? person.photo.startsWith('http')
+                        ? person.photo
+                        : '/media/people/' + person.photo
+                      : null
+                  }
+                  initials={person.name
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((w) => w[0]?.toUpperCase() ?? '')
+                    .join('')}
+                  hue={person.hue}
+                />
+              </div>
+              <button
+                type="submit"
+                className="shrink-0 rounded-full border border-line px-2.5 py-1 text-muted transition-colors hover:border-line-strong hover:text-ink"
+              >
+                Save photo
+              </button>
+            </form>
+
             <form action={updateDetailsAction} className="border-t border-line p-4">
               <input type="hidden" name="slug" value={slug} />
               <input type="hidden" name="personId" value={person.id} />
@@ -190,6 +232,91 @@ export default async function PersonPage({
                     placeholder="B.Tech Computer Science, VIT, 2021"
                     className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
                   />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] text-muted">Email</span>
+                  <input
+                    name="email"
+                    type="email"
+                    defaultValue={person.contact.email}
+                    className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] text-muted">Phone</span>
+                  <input
+                    name="phone"
+                    type="tel"
+                    defaultValue={person.contact.phone ?? ''}
+                    className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] text-muted">LinkedIn</span>
+                  <input
+                    name="linkedin"
+                    type="url"
+                    defaultValue={person.contact.linkedin}
+                    placeholder="https://linkedin.com/in/you"
+                    className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] text-muted">GitHub</span>
+                  <input
+                    name="github"
+                    defaultValue={person.contact.github ?? ''}
+                    placeholder="username"
+                    className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] text-muted">
+                    Gender <span className="text-faint">optional</span>
+                  </span>
+                  <input
+                    name="gender"
+                    maxLength={60}
+                    defaultValue={person.gender ?? ''}
+                    placeholder="However you describe it"
+                    className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] text-muted">
+                    Address <span className="text-faint">optional</span>
+                  </span>
+                  <input
+                    name="address"
+                    maxLength={300}
+                    defaultValue={person.address ?? ''}
+                    autoComplete="street-address"
+                    className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] text-muted">Years of experience</span>
+                  <input
+                    name="yearsExp"
+                    type="number"
+                    min={0}
+                    max={60}
+                    defaultValue={person.yearsExp}
+                    className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] text-muted">Seniority</span>
+                  <select name="seniority" defaultValue={String(person.seniority)} className="mt-1 w-full rounded-full border border-line bg-canvas px-3.5 py-2 text-[13px] outline-none focus:border-accent">
+                    <option value="1">1 — starting out</option>
+                    <option value="2">2 — a couple of years in</option>
+                    <option value="3">3 — solid, works independently</option>
+                    <option value="4">4 — senior, leads work</option>
+                    <option value="5">5 — principal, sets direction</option>
+                  </select>
+                  <span className="mt-1 block text-[11px] text-faint">
+                    Used to rank you, and to work out who could learn from whom.
+                  </span>
                 </label>
               </div>
               <button
@@ -261,6 +388,11 @@ export default async function PersonPage({
         )}
 
         <h2 className="mt-8 font-display text-[15px] font-semibold text-ink">Skills</h2>
+        {skills.some((s) => s.provenance === 'extracted') && (
+          <p className="mt-1 text-[12px] text-muted">
+            Read out of a résumé, unless marked otherwise.
+          </p>
+        )}
         {skills.length === 0 ? (
           <p className="mt-2 text-[13px] text-faint italic">
             None on file yet — this person will not appear in any ranking until they have some.
@@ -318,70 +450,88 @@ export default async function PersonPage({
           </p>
         )}
 
+        {/*
+          One heading called Skills, not three.
+
+          This page used to read "Skills", then "Add skills from GitHub", then
+          "Add skills from a résumé" — three sections about the same thing,
+          two of which are actions you take once. Onboarding asks for the
+          résumé and the GitHub handle now, so these are the later-on case:
+          folded away, still one click deep, no longer competing with the list
+          they write into.
+        */}
         {(canEdit || isMe) && (
-          <section className="mt-6 rounded-xl border border-line bg-panel p-4">
-            <h2 className="text-[13px] font-medium">Add skills from GitHub</h2>
-            <p className="mt-1 text-[12px] text-muted">
-              Public repositories only — languages and topics, weighted by how much is written in
-              each. Nothing private, no extra permissions.
-            </p>
-            <form action={importGitHubAction} className="mt-3 flex gap-2">
-              <input type="hidden" name="orgId" value={org.id} />
-              <input type="hidden" name="slug" value={slug} />
-              <input type="hidden" name="personId" value={person.id} />
-              <input
-                name="handle"
-                required
-                placeholder="username"
-                aria-label="GitHub username"
-                defaultValue={person.contact.github ?? ''}
-                className="min-w-0 flex-1 rounded-full border border-line bg-canvas px-4 py-2 text-[13px] outline-none transition-colors focus:border-accent"
-              />
-              <button
-                type="submit"
-                className="shrink-0 rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-panel transition-opacity hover:opacity-90"
-              >
-                Read
-              </button>
-            </form>
-          </section>
+          <details className="group mt-6">
+            <summary className="cursor-pointer list-none text-[12px] text-muted transition-colors hover:text-ink">
+              <span className="group-open:hidden">+ Add more skills</span>
+              <span className="hidden group-open:inline">− Add more skills</span>
+            </summary>
+
+            <section className="mt-3 rounded-xl border border-line bg-panel p-4">
+              <h3 className="text-[13px] font-medium">From GitHub</h3>
+                <p className="mt-1 text-[12px] text-muted">
+                  Public repositories only — languages and topics, weighted by how much is written in
+                  each. Nothing private, no extra permissions.
+                </p>
+                <form action={importGitHubAction} className="mt-3 flex gap-2">
+                  <input type="hidden" name="orgId" value={org.id} />
+                  <input type="hidden" name="slug" value={slug} />
+                  <input type="hidden" name="personId" value={person.id} />
+                  <input
+                    name="handle"
+                    required
+                    placeholder="username"
+                    aria-label="GitHub username"
+                    defaultValue={person.contact.github ?? ''}
+                    className="min-w-0 flex-1 rounded-full border border-line bg-canvas px-4 py-2 text-[13px] outline-none transition-colors focus:border-accent"
+                  />
+                  <button
+                    type="submit"
+                    className="shrink-0 rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-panel transition-opacity hover:opacity-90"
+                  >
+                    Read
+                  </button>
+              </form>
+            </section>
+
+            {canEdit && (
+              <section className="mt-3 rounded-xl border border-line bg-panel p-4">
+                <h3 className="text-[13px] font-medium">From a résumé</h3>
+                <p className="mt-1 text-[12px] text-muted">
+                  Upload a PDF or Word file, or paste the text. Recognised skills are added as{' '}
+                  <span className="text-faint">from résumé</span> — the engine weights them below an
+                  endorsed or verified level. Skills already on file are left untouched.
+                </p>
+                <form action={addResumeSkillsAction} className="mt-3">
+                  <input type="hidden" name="orgId" value={org.id} />
+                  <input type="hidden" name="slug" value={slug} />
+                  <input type="hidden" name="personId" value={person.id} />
+                  <input
+                    name="file"
+                    type="file"
+                    accept={ACCEPTED}
+                    aria-label="Résumé file"
+                    className="mb-3 block w-full text-[11px] text-muted file:mr-3 file:rounded-full file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-[11px] file:font-medium file:text-panel hover:file:opacity-90"
+                  />
+                  <textarea
+                    name="resume"
+                    rows={6}
+                    placeholder="…or paste résumé / bio text here"
+                    aria-label="Résumé text"
+                    className="w-full resize-y rounded-xl border border-line bg-canvas px-4 py-3 text-[12px] outline-none transition-colors focus:border-accent"
+                  />
+                  <button
+                    type="submit"
+                    className="mt-2 w-full rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-panel transition-opacity hover:opacity-90"
+                  >
+                    Read skills from text
+                  </button>
+                </form>
+              </section>
+            )}
+          </details>
         )}
 
-        {canEdit && (
-          <section className="mt-4 rounded-xl border border-line bg-panel p-4">
-            <h2 className="text-[13px] font-medium">Add skills from a résumé</h2>
-            <p className="mt-1 text-[12px] text-muted">
-              Upload a PDF or Word file, or paste the text. Recognised skills are added as{' '}
-              <span className="text-faint">from résumé</span> — the engine weights them below an
-              endorsed or verified level. Skills already on file are left untouched.
-            </p>
-            <form action={addResumeSkillsAction} className="mt-3">
-              <input type="hidden" name="orgId" value={org.id} />
-              <input type="hidden" name="slug" value={slug} />
-              <input type="hidden" name="personId" value={person.id} />
-              <input
-                name="file"
-                type="file"
-                accept={ACCEPTED}
-                aria-label="Résumé file"
-                className="mb-3 block w-full text-[11px] text-muted file:mr-3 file:rounded-full file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-[11px] file:font-medium file:text-panel hover:file:opacity-90"
-              />
-              <textarea
-                name="resume"
-                rows={6}
-                placeholder="…or paste résumé / bio text here"
-                aria-label="Résumé text"
-                className="w-full resize-y rounded-xl border border-line bg-canvas px-4 py-3 text-[12px] outline-none transition-colors focus:border-accent"
-              />
-              <button
-                type="submit"
-                className="mt-2 w-full rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-panel transition-opacity hover:opacity-90"
-              >
-                Read skills from text
-              </button>
-            </form>
-          </section>
-        )}
       </div>
     </AppShell>
   );

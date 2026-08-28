@@ -40,6 +40,9 @@ interface PersonRow {
   slack: string | null;
   linkedin: string | null;
   github: string | null;
+  phone: string | null;
+  address: string | null;
+  gender: string | null;
   photo: string | null;
   hue: number;
   open_to_projects: boolean;
@@ -49,6 +52,7 @@ interface PersonRow {
 const SELECT = `
   id, org_id, name, title, office, utc_offset, years_exp, seniority,
   hours_per_week, interests, email, slack, linkedin, github, photo, hue, qualification,
+  phone, address, gender,
   open_to_projects,
   person_skills ( skill_id, level, provenance, last_used_at, endorsements ( id ) )
 `;
@@ -83,6 +87,8 @@ function toPerson(row: PersonRow): Person {
     companyId: row.org_id,
     office: row.office,
     qualification: row.qualification ?? '',
+    ...(row.address ? { address: row.address } : {}),
+    ...(row.gender ? { gender: row.gender } : {}),
     // Postgres hands numeric() back as a string.
     utcOffset: Number(row.utc_offset),
     yearsExp: row.years_exp,
@@ -95,6 +101,7 @@ function toPerson(row: PersonRow): Person {
       slack: row.slack ?? '',
       linkedin: row.linkedin ?? '',
       ...(row.github ? { github: row.github } : {}),
+      ...(row.phone ? { phone: row.phone } : {}),
     },
     openToProjects: row.open_to_projects,
     ...(row.photo ? { photo: row.photo } : {}),
@@ -486,9 +493,28 @@ export async function getPerson(id: string): Promise<Person | null> {
  */
 export async function updatePersonDetails(
   personId: string,
-  input: { name: string; title: string; office: string; hoursPerWeek: number; qualification: string },
+  input: {
+    name: string;
+    title: string;
+    office: string;
+    hoursPerWeek: number;
+    qualification: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    gender?: string;
+    linkedin?: string;
+    github?: string;
+    yearsExp?: number;
+    seniority?: number;
+  },
 ): Promise<void> {
   const supabase = await createServerSupabase();
+  // Only the fields actually submitted are written. A form that shows six of
+  // ten fields must not blank the other four just by being saved.
+  const optional = (key: string, value: string | undefined, cap: number) =>
+    value === undefined ? {} : { [key]: value.trim().slice(0, cap) };
+
   const { error } = await supabase
     .from('people')
     .update({
@@ -497,6 +523,20 @@ export async function updatePersonDetails(
       office: input.office,
       qualification: input.qualification,
       hours_per_week: input.hoursPerWeek,
+      ...optional('email', input.email, 200),
+      ...optional('phone', input.phone, 40),
+      ...optional('address', input.address, 300),
+      ...optional('gender', input.gender, 60),
+      ...optional('linkedin', input.linkedin, 300),
+      ...optional('github', input.github, 100),
+      // Both are constrained by check constraints, so clamp rather than let
+      // the database reject the whole update over one out-of-range guess.
+      ...(input.yearsExp === undefined
+        ? {}
+        : { years_exp: Math.max(0, Math.min(60, Math.round(input.yearsExp))) }),
+      ...(input.seniority === undefined
+        ? {}
+        : { seniority: Math.max(1, Math.min(5, Math.round(input.seniority))) }),
     })
     .eq('id', personId);
 
@@ -506,4 +546,123 @@ export async function updatePersonDetails(
     }
     throw new Error('Could not save your changes: ' + error.message);
   }
+}
+
+/**
+ * The optional half of a profile: where else you exist.
+ *
+ * Stored, not scraped. A LinkedIn URL is a link we show; nothing reads it,
+ * because reading it would mean scraping a site that forbids it. The GitHub
+ * handle is different — `skillsFromGitHub` does read it, but only the public
+ * API, and only when you ask.
+ */
+export async function setProfileLinks(
+  personId: string,
+  input: { linkedin?: string; github?: string },
+): Promise<void> {
+  const patch: Record<string, string> = {};
+  if (input.linkedin !== undefined) patch.linkedin = input.linkedin.trim().slice(0, 300);
+  if (input.github !== undefined) patch.github = input.github.trim().slice(0, 100);
+  if (Object.keys(patch).length === 0) return;
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.from('people').update(patch).eq('id', personId);
+
+  if (error) {
+    if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
+      throw new Error('You can only edit your own profile.');
+    }
+    throw new Error('Could not save those links: ' + error.message);
+  }
+}
+
+/**
+ * Hours a week and the offset you work at — the two numbers the engine
+ * actually reads about availability. Overlap between a team's offsets is a
+ * real input to team health, which is why the timezone is asked for rather
+ * than inferred from a browser clock that lies whenever someone travels.
+ */
+export async function setAvailability(
+  personId: string,
+  input: { hoursPerWeek: number; utcOffset: number },
+): Promise<void> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from('people')
+    .update({
+      hours_per_week: Math.max(0, Math.min(40, Math.round(input.hoursPerWeek))),
+      utc_offset: Math.max(-12, Math.min(14, input.utcOffset)),
+    })
+    .eq('id', personId);
+
+  if (error) {
+    if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
+      throw new Error('You can only edit your own profile.');
+    }
+    throw new Error('Could not save your availability: ' + error.message);
+  }
+}
+
+/**
+ * Everyone this brief could be staffed from.
+ *
+ * Three sources, and the order matters:
+ *
+ *   your workspace   the people you added or imported
+ *   the open pool    anyone who filled in Find work and did not opt out
+ *   the sample pool  the sixty seeded profiles
+ *
+ * The sample profiles are in here on purpose. A platform with no users has
+ * nobody to match, so a new account could describe a project and be shown an
+ * empty page — the product's whole claim, failing on first contact. Seeding
+ * the pool is how every marketplace opens, and these particular sixty are
+ * already public on the landing page, so nothing is being revealed that was
+ * not already shown.
+ *
+ * They are marked as samples wherever they are rendered. A fictional person
+ * presented as a real candidate would be a lie; a fictional person labelled
+ * as an example is a demonstration.
+ *
+ * RLS decides what actually comes back — see 0008_open_pool.sql — so this is
+ * one query rather than a privileged merge, and a private profile is absent
+ * because the database refused it, not because this remembered to filter.
+ */
+export async function listCandidatePool(orgId: string): Promise<Person[]> {
+  if (!hasDatabase) return peopleSeed as Person[];
+
+  const supabase = await createServerSupabase();
+
+  const { data: demo } = await supabase
+    .from('orgs')
+    .select('id')
+    .eq('is_demo', true)
+    .maybeSingle();
+  const demoId = (demo as { id: string } | null)?.id;
+
+  const { data, error } = await supabase
+    .from('people')
+    .select(SELECT)
+    .is('deleted_at', null)
+    .or(
+      [
+        `org_id.eq.${orgId}`,
+        'and(user_id.not.is.null,open_to_projects.is.true)',
+        ...(demoId && demoId !== orgId ? [`org_id.eq.${demoId}`] : []),
+      ].join(','),
+    );
+
+  if (error) throw new Error('Could not load the candidate pool: ' + error.message);
+
+  const rows = data as unknown as PersonRow[];
+
+  // One person can hold rows in several workspaces — their own, and any
+  // roster they were imported into. Prefer the claimed one and show them once.
+  const byName = new Map<string, PersonRow>();
+  for (const r of rows) {
+    const key = (r.email ?? r.name).toLowerCase();
+    const seen = byName.get(key);
+    if (!seen || (r.org_id === orgId && seen.org_id !== orgId)) byName.set(key, r);
+  }
+
+  return [...byName.values()].map(toPerson);
 }

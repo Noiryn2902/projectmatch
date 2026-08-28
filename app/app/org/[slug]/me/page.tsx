@@ -56,13 +56,11 @@ export default async function MyProfilePage({
   return (
     <AppShell back={{ href: `/app/org/${slug}`, label: org.name }}>
       <div>
-        <p className="text-[11px] tracking-wide text-faint uppercase">Step 2 of 2</p>
-        <h1 className="mt-1 font-display text-2xl font-bold text-balance text-ink">
+        <h1 className="font-display text-2xl font-bold text-balance text-ink">
           Add yourself to {org.name}
         </h1>
         <p className="mt-2 text-[13px] text-muted">
-          Signed in as {user.email}. An account proves who you are — this is the profile teams get
-          matched against. Without it you appear in no ranking and cannot endorse anyone.
+          This is the profile teams get matched against. Without it you appear in no ranking.
         </p>
 
         {fileError && (

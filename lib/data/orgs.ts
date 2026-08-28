@@ -148,3 +148,33 @@ export async function createOrg(name: string): Promise<Org> {
 
   return { id: orgId as string, name, slug, offices: [], isDemo: false };
 }
+
+/**
+ * The org to act in when the caller has not named one.
+ *
+ * Everything used to take `listOrgsForUser()[0]`, which is alphabetical — so
+ * creating a second org called "Banyan Labs" silently moved every default
+ * away from "Test Co", where the actual roster lived. New projects landed in
+ * an empty org and had nobody to staff from, and nothing said why.
+ *
+ * Where you *are* is a better answer than where the alphabet points: the org
+ * you have a profile in is the one you work in. Falling back to the oldest
+ * beats falling back to whichever name happens to sort first.
+ */
+export async function getMyOrg(): Promise<Org | null> {
+  const orgs = await listOrgsForUser();
+  if (orgs.length <= 1) return orgs[0] ?? null;
+
+  const supabase = await createServerSupabase();
+  const user = await getCurrentUser();
+  if (!user) return orgs[0] ?? null;
+
+  const { data } = await supabase
+    .from('people')
+    .select('org_id')
+    .eq('user_id', user.id)
+    .is('deleted_at', null);
+
+  const mine = new Set(((data ?? []) as { org_id: string }[]).map((r) => r.org_id));
+  return orgs.find((o) => mine.has(o.id)) ?? orgs[0] ?? null;
+}

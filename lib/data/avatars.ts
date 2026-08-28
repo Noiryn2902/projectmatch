@@ -97,3 +97,28 @@ export async function setAvatar(personId: string, file: File): Promise<string> {
 
   return url;
 }
+
+/**
+ * Detaches the photo from a person, leaving initials in its place.
+ *
+ * The object stays in the bucket on purpose. Deleting it would need the
+ * admin client, and a delete that raced a page still rendering the old URL
+ * would show a broken image rather than a face — whereas an orphaned file
+ * behind a path nothing links to costs a few kilobytes and no correctness.
+ * The row is the source of truth for what is shown, so clearing the row is
+ * what "remove" means here, and RLS governs it exactly as an upload is.
+ */
+export async function clearAvatar(personId: string): Promise<void> {
+  const supabase = await createServerSupabase();
+  const { error } = await supabase
+    .from('people')
+    .update({ photo: null })
+    .eq('id', personId);
+
+  if (error) {
+    if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
+      throw new AvatarError('You can only change your own photo.');
+    }
+    throw new AvatarError('Could not remove the photo: ' + error.message);
+  }
+}

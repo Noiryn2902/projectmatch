@@ -29,6 +29,7 @@ export function teamHealth(brief: Brief, members: Person[], seats: number): Team
     seen.add(u.req.skillId);
     gaps.push({
       label: 'No coverage for ' + labelOf(u.req.skillId),
+      skillId: u.req.skillId,
       severity: u.req.weight >= 3 ? 'high' : 'medium',
     });
     if (gaps.length >= 3) break;
@@ -50,6 +51,7 @@ export function teamHealth(brief: Brief, members: Person[], seats: number): Team
     seen.add(s.req.skillId);
     gaps.push({
       label: `Only ${s.holders[0].name} covers ${labelOf(s.req.skillId)}`,
+      skillId: s.req.skillId,
       severity: s.req.weight >= 3 ? 'high' : 'medium',
     });
     if (gaps.length >= 4) break;

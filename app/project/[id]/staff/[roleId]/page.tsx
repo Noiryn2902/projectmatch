@@ -6,14 +6,14 @@ import { capacityVerdict } from '@/lib/capacity';
 import { getCommitments } from '@/lib/data/allocations';
 import { getDemoOrg } from '@/lib/data/orgs';
 import { getProject } from '@/lib/data/projects';
-import { listPeople } from '@/lib/data/people';
+import { listCandidatePool } from '@/lib/data/people';
 import { SEAT_FLOOR, rankCandidates, type Candidate } from '@/lib/engine/assemble';
 import { diagnoseRole } from '@/lib/engine/feasibility';
 import { labelOf } from '@/lib/engine/graph';
 import { stretchPairs } from '@/lib/engine/growth';
 import { coveringProvenance } from '@/lib/engine/score';
 
-import { fillSeatAction, inviteAction } from './actions';
+import { chooseForInviteAction, fillSeatAction, inviteAction } from './actions';
 
 /**
  * Where the engine finally meets real data.
@@ -32,10 +32,17 @@ import { fillSeatAction, inviteAction } from './actions';
  */
 export default async function StaffSeatPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; roleId: string }>;
+  searchParams: Promise<{ back?: string; picks?: string }>;
 }) {
   const { id, roleId } = await params;
+  const { back, picks } = await searchParams;
+
+  // Arrived from step four to swap one card, rather than from the workspace
+  // to fill one seat. Same ranking, different verb at the end of it.
+  const choosing = back === 'invite';
 
   const project = await getProject(id);
   if (!project) notFound();
@@ -44,7 +51,7 @@ export default async function StaffSeatPage({
   if (!role) notFound();
 
   const [pool, demoOrg, commitments] = await Promise.all([
-    listPeople(project.orgId),
+    listCandidatePool(project.orgId),
     getDemoOrg(),
     getCommitments(project.orgId),
   ]);
@@ -130,7 +137,16 @@ export default async function StaffSeatPage({
   const readOnly = demoOrg !== null && project.orgId === demoOrg.id;
 
   return (
-    <AppShell back={{ href: `/project/${project.id}`, label: "Back to project" }}>
+    <AppShell
+      back={
+        choosing
+          ? {
+              href: `/project/${project.id}/invite?picks=${encodeURIComponent(picks ?? '')}`,
+              label: 'Back to your team',
+            }
+          : { href: `/project/${project.id}`, label: 'Back to project' }
+      }
+    >
       <div>
         <p className="text-[11px] tracking-wide text-faint uppercase">Staffing</p>
         <h1 className="mt-1 font-display text-lg font-semibold text-ink">{role.title}</h1>
@@ -173,19 +189,31 @@ export default async function StaffSeatPage({
           JavaScript.
         */}
         {!readOnly && qualified.length > 0 && (
-          <form id="invite" action={inviteAction} className="mt-3">
+          <form
+            id="invite"
+            action={choosing ? chooseForInviteAction : inviteAction}
+            className="mt-3"
+          >
             <input type="hidden" name="projectId" value={project.id} />
             <input type="hidden" name="roleId" value={role.id} />
-            <label htmlFor="message" className="sr-only">
-              A note to send with the invitation
-            </label>
-            <input
-              id="message"
-              name="message"
-              maxLength={500}
-              placeholder="Add a note — why them, what the work is (optional)"
-              className="w-full rounded-full border border-line bg-panel px-4 py-2 text-[13px] outline-none transition-colors focus:border-accent"
-            />
+            {choosing ? (
+              // Nothing is sent from here — the note is written once on step
+              // four and goes out with the whole team.
+              <input type="hidden" name="picks" value={picks ?? ''} />
+            ) : (
+              <>
+                <label htmlFor="message" className="sr-only">
+                  A note to send with the invitation
+                </label>
+                <input
+                  id="message"
+                  name="message"
+                  maxLength={500}
+                  placeholder="Add a note — why them, what the work is (optional)"
+                  className="w-full rounded-full border border-line bg-panel px-4 py-2 text-[13px] outline-none transition-colors focus:border-accent"
+                />
+              </>
+            )}
           </form>
         )}
 
@@ -210,6 +238,7 @@ export default async function StaffSeatPage({
                   projectId={project.id}
                   roleId={role.id}
                   readOnly={readOnly}
+                  choosing={choosing}
                 />
               ))}
             </ul>
@@ -238,6 +267,7 @@ export default async function StaffSeatPage({
                     projectId={project.id}
                     roleId={role.id}
                     readOnly={readOnly}
+                    choosing={choosing}
                     belowBar
                   />
                 ))}
@@ -249,7 +279,9 @@ export default async function StaffSeatPage({
         <p className="mt-3 text-[11px] text-faint">
           {readOnly
             ? 'Demo organisation — read only.'
-            : 'Inviting holds the seat. It is theirs once they accept.'}
+            : choosing
+              ? 'Nothing is sent yet — you go back to your team first.'
+              : 'Inviting holds the seat. It is theirs once they accept.'}
         </p>
       </div>
     </AppShell>
@@ -316,6 +348,7 @@ function CandidateRow({
   projectId,
   roleId,
   readOnly,
+  choosing,
   belowBar = false,
 }: {
   candidate: Candidate;
@@ -328,6 +361,8 @@ function CandidateRow({
   projectId: string;
   roleId: string;
   readOnly: boolean;
+  /** Picking for step four rather than inviting outright. */
+  choosing: boolean;
   /** Below the bar: inviting is an exception, so it must not look like the default. */
   belowBar?: boolean;
 }) {
@@ -423,7 +458,7 @@ function CandidateRow({
               : 'shrink-0 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-panel transition-opacity hover:opacity-90'
           }
         >
-          {belowBar ? 'Invite anyway' : 'Invite'}
+          {choosing ? (belowBar ? 'Choose anyway' : 'Choose') : belowBar ? 'Invite anyway' : 'Invite'}
         </button>
       )}
     </li>

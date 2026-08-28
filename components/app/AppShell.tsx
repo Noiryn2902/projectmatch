@@ -47,7 +47,7 @@ export default function AppShell({
     <div className="pm-grain min-h-screen">
       <header className="sticky top-0 z-30 border-b border-line bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-[960px] items-center gap-4 px-5 py-2.5">
-          <Link href="/app" className="font-display text-[15px] font-bold tracking-tight">
+          <Link href="/" className="font-display text-[15px] font-bold tracking-tight">
             Project<span className="text-accent">Match</span>
           </Link>
 

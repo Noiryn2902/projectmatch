@@ -12,9 +12,17 @@ import Link from 'next/link';
  * visitor gets a way into their workspace; a signed-out one gets the real
  * sign-in page, where GitHub, Google and a mailed link are the options.
  */
+/*
+ * Two of these scroll, one navigates. "Find work" is the other half of the
+ * product — everything else on this page is written for the person forming a
+ * team, and the person who wants to be found had nowhere to go. It sits with
+ * the rest of the nav rather than behind the sign-up button because it is a
+ * thing to look at, not a wall to clear.
+ */
 const LINKS = [
   { label: 'How it works', href: '#how-it-works' },
   { label: 'For teams', href: '#for-teams' },
+  { label: 'Find work', href: '/onboarding' },
 ];
 
 export interface Viewer {
@@ -58,13 +66,13 @@ export default function SiteNav({ viewer }: { viewer?: Viewer | null }) {
 
           <div className="hidden gap-6 sm:flex">
             {LINKS.map((l) => (
-              <a
+              <Link
                 key={l.href}
                 href={l.href}
                 className="text-[14px] whitespace-nowrap text-muted transition-colors hover:text-ink"
               >
                 {l.label}
-              </a>
+              </Link>
             ))}
           </div>
 
@@ -102,13 +110,13 @@ export default function SiteNav({ viewer }: { viewer?: Viewer | null }) {
             ) : (
               <>
                 <Link
-                  href="/auth/sign-in?next=/app"
+                  href="/auth/sign-in"
                   className="rounded-full border border-line-strong px-4 py-2 text-[13px] font-medium hover:border-accent hover:text-accent"
                 >
                   Log in
                 </Link>
                 <Link
-                  href="/auth/sign-in?next=/app"
+                  href="/auth/sign-up"
                   className="rounded-full bg-accent px-4 py-2 text-[13px] font-semibold text-canvas hover:opacity-90"
                 >
                   Sign up

@@ -52,6 +52,7 @@ export interface Contact {
   slack: string;
   linkedin: string;
   github?: string;
+  phone?: string;
 }
 
 export interface Person {
@@ -62,6 +63,14 @@ export interface Person {
   office: string;
   /** Free text, shown on a profile. Never read by the engine. */
   qualification?: string;
+  /** Optional, and never used for matching or filtering. */
+  address?: string;
+  /**
+   * Optional self-description. Never inferred from a name or a photo, never
+   * required, and never an input to any ranking — it exists to be shown by
+   * the person who chose to write it.
+   */
+  gender?: string;
   utcOffset: number;
   yearsExp: number;
   seniority: number;
@@ -115,6 +124,17 @@ export interface ScoreBreakdown {
 export interface Gap {
   label: string;
   severity: 'high' | 'medium';
+  /**
+   * The requirement this gap is about, when it is about one.
+   *
+   * `label` is a whole sentence — "No coverage for UI design" — which reads
+   * well in a list and composes into nothing. Anything that wants to say
+   * something else about the same gap needs the skill itself, so it is
+   * carried alongside rather than parsed back out of English. Absent on the
+   * gaps that are not about a skill at all: thin overlap, no senior presence,
+   * somebody capped at four hours a week.
+   */
+  skillId?: SkillId;
 }
 
 export interface TeamHealth {

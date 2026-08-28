@@ -101,7 +101,52 @@ export async function postMessage(projectId: string, body: string): Promise<void
   }
 }
 
-/** Chat opens once at least one person has accepted a seat, not at assembly. */
-export function chatIsOpen(members: Person[]): boolean {
-  return members.length > 0;
+/** The name assistant messages are written under. */
+export const ASSISTANT = 'assistant';
+
+/**
+ * Posts a reply from the assistant.
+ *
+ * Written through the caller's own session, not the admin client: the
+ * messages_insert policy only asks whether you are a member of the owning
+ * org, which is exactly the right question. Somebody who could not post here
+ * themselves should not be able to make the assistant post for them, and
+ * routing this through a privileged client would have quietly broken that.
+ *
+ * author_id stays null — the assistant is not a person on the roster, and
+ * pretending otherwise would put it in member counts and rankings.
+ */
+export async function postAssistantMessage(projectId: string, body: string): Promise<void> {
+  const trimmed = body.trim().slice(0, 4000);
+  if (!trimmed) return;
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.from('messages').insert({
+    project_id: projectId,
+    author_id: null,
+    author_name: ASSISTANT,
+    body: trimmed,
+  });
+
+  // A failed reply must not fail the message that prompted it — the person's
+  // own words are already in, and losing them to a bot error would be worse
+  // than a silent assistant.
+  if (error) console.error('assistant reply not posted: ' + error.message);
+}
+
+/**
+ * Chat opens when every seat has been accepted — not at assembly, and not on
+ * the first acceptance.
+ *
+ * The looser rule was worse than it looked. A channel that opens on one yes
+ * is a channel three of the five people cannot read, so the first real
+ * conversation about the project happens without them and has to be repeated
+ * when they arrive. Waiting costs a few hours; not waiting costs the team its
+ * first shared context.
+ *
+ * It also gives the invitation step a meaning it did not have: the room
+ * appears when the team does.
+ */
+export function chatIsOpen(members: Person[], seats: number): boolean {
+  return seats > 0 && members.length >= seats;
 }

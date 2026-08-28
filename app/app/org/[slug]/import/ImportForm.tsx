@@ -53,7 +53,7 @@ export default function ImportForm({
         onChange={(e) => setText(e.target.value)}
         rows={8}
         placeholder="name,title,hours&#10;Priya Nair,Backend Engineer,32&#10;…"
-        aria-label="Roster rows"
+        aria-label="People to import"
         className="w-full resize-y rounded-xl border border-line bg-panel px-4 py-3 font-mono text-[12px] outline-none transition-colors focus:border-accent"
       />
 
@@ -97,7 +97,7 @@ export default function ImportForm({
 
           <p className="mt-3 text-[12px] text-muted">
             <span className="font-medium text-ink">{ok}</span> to import
-            {dupRoster > 0 && <> · {dupRoster} already on the roster</>}
+            {dupRoster > 0 && <> · {dupRoster} already added</>}
             {dupFile > 0 && <> · {dupFile} repeated in the paste</>}
             {invalid > 0 && <> · {invalid} with no name</>}
           </p>

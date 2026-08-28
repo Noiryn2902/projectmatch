@@ -329,6 +329,42 @@ export async function createProject(
 }
 
 /**
+ * Name and description, from the naming step and from Setup alike.
+ *
+ * The same write serves both because they are the same act: the naming step
+ * is simply the first time anyone does it. A project arrives from the builder
+ * with no name at all, and having one is what marks that step answered — so
+ * this is also what stops the flow routing back through it.
+ *
+ * The brief is left alone when the field comes back empty. Roles were derived
+ * from it at creation and are not re-derived here: editing the description
+ * changes what the project says it is, not who it needs.
+ */
+export async function describeProject(
+  projectId: string,
+  name: string,
+  briefText: string,
+): Promise<void> {
+  const supabase = await createServerSupabase();
+  const trimmed = briefText.trim();
+
+  const { error } = await supabase
+    .from('projects')
+    .update({
+      name: name.trim().slice(0, 120),
+      ...(trimmed ? { brief_text: trimmed.slice(0, 2000) } : {}),
+    })
+    .eq('id', projectId);
+
+  if (error) {
+    if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
+      throw new Error('Only a member of this organisation can edit it.');
+    }
+    throw new Error('Could not save the project: ' + error.message);
+  }
+}
+
+/**
  * Renames a project. Ordinary `projects_write` RLS — an org member on a
  * non-demo project — is the only gate, same as every other write here.
  */
@@ -404,7 +440,21 @@ export async function listProjectCards(
 
   if (error) throw new Error('Could not load projects: ' + error.message);
 
-  type CardRoleRow = RoleRow & { seats: { person_id: string | null; state: string }[] | null };
+  type SeatEmbed = { person_id: string | null; state: string };
+  /*
+   * seats.role_id carries a unique constraint, so PostgREST reads
+   * project_roles → seats as a to-*one* relation and embeds a bare object
+   * rather than a one-element array. `?? []` covered the null case and hid
+   * this for as long as no project had a seat; the moment one did, .filter
+   * was being called on an object.
+   *
+   * Accept either shape rather than betting on which one the API decides
+   * this is — the constraint could be relaxed one day, and this stays right
+   * both ways.
+   */
+  type CardRoleRow = RoleRow & { seats: SeatEmbed[] | SeatEmbed | null };
+  const seatsOf = (r: CardRoleRow): SeatEmbed[] =>
+    Array.isArray(r.seats) ? r.seats : r.seats ? [r.seats] : [];
   const rows = (data ?? []) as unknown as (Omit<ProjectRow, 'project_roles'> & {
     project_roles: CardRoleRow[] | null;
   })[];
@@ -415,7 +465,7 @@ export async function listProjectCards(
     ...new Set(
       rows.flatMap((p) =>
         (p.project_roles ?? []).flatMap((r) =>
-          (r.seats ?? [])
+          seatsOf(r)
             .filter((s) => s.state === 'filled' && s.person_id)
             .map((s) => s.person_id as string),
         ),
@@ -443,7 +493,7 @@ export async function listProjectCards(
     let myRole: string | null = null;
 
     for (const r of roleRows) {
-      const seat = (r.seats ?? [])[0];
+      const seat = seatsOf(r)[0];
       if (!seat) continue;
       if (seat.state === 'invited') waiting++;
       if (seat.state === 'filled' && seat.person_id) {

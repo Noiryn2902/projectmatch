@@ -3,14 +3,21 @@ import { notFound } from 'next/navigation';
 
 import Avatar from '@/components/Avatar';
 import { hasDatabase } from '@/lib/env';
-import { getDemoOrg } from '@/lib/data/orgs';
+import { getDemoOrg, listOrgsForUser } from '@/lib/data/orgs';
 import { listInvitationTiles } from '@/lib/data/invitations';
-import { chatIsOpen, listMessages } from '@/lib/data/messages';
+import { ASSISTANT, chatIsOpen, listMessages } from '@/lib/data/messages';
 import { getProject } from '@/lib/data/projects';
-import { listPeople } from '@/lib/data/people';
+import { listCandidatePool } from '@/lib/data/people';
 import { SEAT_FLOOR, rankCandidates } from '@/lib/engine/assemble';
 import { labelOf } from '@/lib/engine/graph';
-import type { Person } from '@/lib/types';
+import {
+  agendaFor,
+  asClock,
+  googleCalendarUrl,
+  overlapWindow,
+  proposeSlots,
+} from '@/lib/meeting';
+import type { Brief, Person, TeamHealth } from '@/lib/types';
 
 import {
   deleteProjectAction,
@@ -31,11 +38,12 @@ import { inviteAction } from './staff/[roleId]/actions';
  * called itself live. Same shape, real data.
  */
 
-type Tab = 'chat' | 'people' | 'seats' | 'setup';
+type Tab = 'chat' | 'people' | 'seats' | 'kickoff' | 'setup';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'chat', label: 'Chat' },
   { id: 'people', label: 'People' },
   { id: 'seats', label: 'Seats' },
+  { id: 'kickoff', label: 'Kickoff' },
   { id: 'setup', label: 'Setup' },
 ];
 
@@ -51,6 +59,7 @@ export default async function ProjectWorkspace({
     revoked?: string;
     created?: string;
     renamed?: string;
+    slot?: string;
   }>;
 }) {
   const { id } = await params;
@@ -75,6 +84,17 @@ export default async function ProjectWorkspace({
   const demoOrg = await getDemoOrg();
   const readOnly = demoOrg !== null && project.orgId === demoOrg.id;
 
+  /*
+   * The slug for links out to a person's profile has to be *this project's*
+   * org, which is not always the demo one. It was reading demoOrg.slug
+   * unconditionally, so on any real project the People tab pointed at
+   * /app/org/demo/people/<id> — an id that does not exist in that org — and
+   * on a deployment with no demo org at all it produced /app/org//people/<id>.
+   */
+  const orgs = readOnly ? [] : await listOrgsForUser();
+  const orgSlug =
+    orgs.find((o) => o.id === project.orgId)?.slug ?? demoOrg?.slug ?? '';
+
   const { brief, roles, health, seats, declines, members } = project;
   const pct = Math.round(health.coverage * 100);
   const open = roles.filter((r) => seats[r.id]?.state === 'open').length;
@@ -85,14 +105,14 @@ export default async function ProjectWorkspace({
   const tab: Tab = TABS.some((t) => t.id === sp.tab) ? (sp.tab as Tab) : fallback;
 
   const invitations = readOnly ? [] : await listInvitationTiles(project.id);
-  const chatOpen = chatIsOpen(members);
+  const chatOpen = chatIsOpen(members, roles.length);
   const messages = tab === 'chat' && chatOpen ? await listMessages(project.id) : [];
 
   // The engine's pick from this org's roster for each open seat, offered
   // rather than assigned.
   const suggestions = new Map<string, { person: Person; fit: number }>();
   if (!readOnly && open > 0) {
-    const pool = await listPeople(project.orgId);
+    const pool = await listCandidatePool(project.orgId);
     const taken = new Set(
       Object.values(seats)
         .map((s) => s.person?.id)
@@ -122,6 +142,16 @@ export default async function ProjectWorkspace({
       <header className="sticky top-0 z-20 border-b border-line bg-canvas/90 backdrop-blur">
         <div className="mx-auto max-w-[1080px] px-5 pt-4">
           <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/"
+              className="font-display text-[15px] font-bold tracking-tight whitespace-nowrap"
+            >
+              Project<span className="text-accent">Match</span>
+            </Link>
+            <span aria-hidden className="text-line-strong">
+              /
+            </span>
+
             <span
               className={`grid size-8 shrink-0 place-items-center rounded-full text-[15px] ${
                 open === 0 ? 'bg-good-soft text-good' : 'bg-panel-2 text-faint'
@@ -189,7 +219,7 @@ export default async function ProjectWorkspace({
           <Banner tone="good">
             {sp.emailed
               ? 'Invitation emailed. The seat is held until they answer.'
-              : 'Invitation ready — no email on file, so send them the link from Seats.'}
+              : 'Invitation ready — no email on file, so pass the link on from People.'}
           </Banner>
         )}
 
@@ -213,31 +243,50 @@ export default async function ProjectWorkspace({
 
             <section className="flex min-h-[420px] flex-col rounded-xl border border-line bg-panel">
               {!chatOpen ? (
-                <p className="m-auto max-w-[36ch] p-8 text-center text-[13px] text-faint">
-                  Chat opens once someone accepts a seat.
+                <p className="m-auto max-w-[40ch] p-8 text-center text-[13px] text-faint">
+                  Chat opens when everyone has accepted — {members.length} of {roles.length} so
+                  far.
+                  {open > 0 && ` ${open} seat${open === 1 ? '' : 's'} still to fill.`}
                 </p>
               ) : (
                 <>
                   <ul className="flex-1 space-y-3 overflow-y-auto p-4">
                     {messages.length === 0 ? (
                       <li className="pt-10 text-center text-[13px] text-faint">
-                        Nothing here yet. Say hello.
+                        Nothing here yet. Say hello, or ask{' '}
+                        <span className="text-accent">@assistant</span> what the team is still
+                        missing.
                       </li>
                     ) : (
-                      messages.map((m) => (
-                        <li key={m.id} className={m.mine ? 'text-right' : undefined}>
-                          <p className="text-[11px] text-faint">
-                            {m.authorName} · {new Date(m.at).toLocaleString()}
-                          </p>
-                          <p
-                            className={`mt-0.5 inline-block max-w-[80%] rounded-xl px-3 py-1.5 text-[13px] whitespace-pre-wrap ${
-                              m.mine ? 'bg-accent text-panel' : 'bg-panel-2 text-ink'
-                            }`}
+                      messages.map((m) => {
+                        const bot = m.authorName === ASSISTANT;
+                        return (
+                          <li
+                            key={m.id}
+                            className={m.mine && !bot ? 'text-right' : undefined}
                           >
-                            {m.body}
-                          </p>
-                        </li>
-                      ))
+                            <p className="flex items-center gap-1.5 text-[11px] text-faint">
+                              {bot && (
+                                <span className="rounded-full border border-accent/40 px-1.5 text-[10px] text-accent">
+                                  AI
+                                </span>
+                              )}
+                              {m.authorName} · {new Date(m.at).toLocaleString()}
+                            </p>
+                            <p
+                              className={`mt-0.5 inline-block max-w-[80%] rounded-xl px-3 py-1.5 text-[13px] whitespace-pre-wrap ${
+                                bot
+                                  ? 'border border-accent/25 bg-accent/10 text-ink'
+                                  : m.mine
+                                    ? 'bg-accent text-panel'
+                                    : 'bg-panel-2 text-ink'
+                              }`}
+                            >
+                              {m.body}
+                            </p>
+                          </li>
+                        );
+                      })
                     )}
                   </ul>
 
@@ -255,7 +304,7 @@ export default async function ProjectWorkspace({
                         name="body"
                         required
                         autoComplete="off"
-                        placeholder="Message the team"
+                        placeholder="Message the team…  (try @assistant what are we missing?)"
                         aria-label="Message the team"
                         className="min-w-0 flex-1 rounded-full border border-line bg-canvas px-4 py-2 text-[13px] outline-none focus:border-accent"
                       />
@@ -310,11 +359,22 @@ export default async function ProjectWorkspace({
                           </a>
                         )}
                         <Link
-                          href={`/app/org/${demoOrg?.slug ?? ''}/people/${inv.personId}`}
+                          href={`/app/org/${orgSlug}/people/${inv.personId}`}
                           className="text-accent hover:underline"
                         >
                           Explore
                         </Link>
+                        {inv.status === 'sent' && (
+                          <a
+                            href={`/invite/${inv.token}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-accent hover:underline"
+                            title="Opens the accept-or-decline page. No account needed."
+                          >
+                            Open invite ↗
+                          </a>
+                        )}
                         {inv.status === 'declined' && !readOnly && (
                           <Link
                             href={`/project/${project.id}/staff/${inv.roleId}`}
@@ -500,6 +560,17 @@ export default async function ProjectWorkspace({
           </div>
         )}
 
+        {/* --------------------------------------------------------- kickoff */}
+        {tab === 'kickoff' && (
+          <Kickoff
+            members={members}
+            brief={brief}
+            health={health}
+            projectId={project.id}
+            slot={Math.min(2, Math.max(0, Number(sp.slot ?? 0) || 0))}
+          />
+        )}
+
         {/* ----------------------------------------------------------- setup */}
         {tab === 'setup' && (
           <div className="max-w-[520px] space-y-4">
@@ -515,8 +586,19 @@ export default async function ProjectWorkspace({
                   disabled={readOnly}
                   className="w-full rounded-full border border-line bg-canvas px-4 py-2 text-[13px] outline-none focus:border-accent disabled:opacity-50"
                 />
-                <p className="rounded-lg border border-line bg-canvas px-3.5 py-2.5 text-[12px] leading-relaxed text-muted">
-                  {brief.text}
+                <textarea
+                  name="brief"
+                  rows={5}
+                  maxLength={2000}
+                  defaultValue={brief.text}
+                  placeholder="What this project is"
+                  aria-label="Project description"
+                  disabled={readOnly}
+                  className="w-full resize-y rounded-lg border border-line bg-canvas px-3.5 py-2.5 text-[12px] leading-relaxed outline-none focus:border-accent disabled:opacity-50"
+                />
+                <p className="text-[11px] text-faint">
+                  Editing this changes what the project says it is. The roles it already has stay
+                  as they are.
                 </p>
                 {!readOnly && (
                   <button
@@ -549,6 +631,148 @@ export default async function ProjectWorkspace({
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+/**
+ * Kickoff: when can this team actually meet, and what should they cover.
+ *
+ * Restored from the original build, with the maths lifted into lib/meeting.ts
+ * and the picked slot moved into the URL — which means the whole panel is a
+ * server render with no client state, and the three time buttons are links
+ * that survive a refresh and a shared URL.
+ *
+ * Google Calendar is a compose link rather than an integration on purpose. A
+ * real sync would need OAuth, a calendar scope, and a stored refresh token
+ * per person, to do something the person can do in one click in their own
+ * account. The .ics covers everyone not on Google.
+ */
+function Kickoff({
+  members,
+  brief,
+  health,
+  projectId,
+  slot,
+}: {
+  members: Person[];
+  brief: Brief;
+  health: TeamHealth;
+  projectId: string;
+  slot: number;
+}) {
+  const win = overlapWindow(members);
+  const slots = proposeSlots(win);
+  const agenda = agendaFor(brief, members, health);
+  const attendees = members.map((p) => p.contact.email).filter(Boolean);
+  const picked = slots[slot];
+
+  const href = (i: number) => `/project/${projectId}?tab=kickoff&slot=${i}`;
+
+  return (
+    <div className="grid max-w-[820px] gap-4 md:grid-cols-2">
+      <section className="rounded-xl border border-line bg-panel p-4 md:col-span-2">
+        <h2 className="text-[13px] font-medium">When everyone is awake</h2>
+        {win ? (
+          <>
+            <p className="mt-1.5 font-display text-[22px] font-semibold text-good">
+              {asClock(win.start)}–{asClock(win.end)} UTC
+            </p>
+            <p className="mt-1 text-[12px] text-muted">
+              Each person&rsquo;s 09:00–18:00 local, overlapped. Worked out from the timezones on
+              their profiles, not guessed.
+            </p>
+            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-faint">
+              {members.map((p) => (
+                <li key={p.id}>
+                  {p.name.split(' ')[0]} · UTC{p.utcOffset >= 0 ? '+' : ''}
+                  {p.utcOffset}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <>
+            <p className="mt-1.5 text-[13px] text-warn">No hour of the day suits everyone.</p>
+            <p className="mt-1 text-[12px] text-muted">
+              This team spans too many timezones for a shared working window, so any meeting is
+              somebody&rsquo;s early morning or late evening. Worth knowing before it is booked
+              rather than after.
+            </p>
+          </>
+        )}
+      </section>
+
+      {win && (
+        <section className="rounded-xl border border-line bg-panel p-4">
+          <h2 className="text-[13px] font-medium">Pick a time</h2>
+          <p className="mt-1 text-[12px] text-muted">
+            The middle of the window, on the next three days.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {slots.map((d, i) => (
+              <li key={i}>
+                <Link
+                  href={href(i)}
+                  aria-current={i === slot ? 'true' : undefined}
+                  className={`block rounded-lg border px-3 py-2 text-[13px] transition-colors ${
+                    i === slot
+                      ? 'border-accent bg-accent/10 text-ink'
+                      : 'border-line text-muted hover:border-line-strong hover:text-ink'
+                  }`}
+                >
+                  {d.toUTCString().slice(0, 16)} · {asClock(d.getUTCHours() + d.getUTCMinutes() / 60)}{' '}
+                  UTC
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          {picked && (
+            <div className="mt-4 space-y-2">
+              <a
+                href={googleCalendarUrl({
+                  title: `${brief.text.slice(0, 40)} — kickoff`,
+                  start: picked,
+                  agenda,
+                  attendees,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-lg bg-accent px-4 py-2 text-center text-[13px] font-medium text-panel transition-opacity hover:opacity-90"
+              >
+                Add to Google Calendar
+              </a>
+              <a
+                href={`/project/${projectId}/kickoff.ics?slot=${slot}`}
+                className="block rounded-lg border border-line px-4 py-2 text-center text-[13px] text-muted transition-colors hover:border-accent hover:text-accent"
+              >
+                Download .ics
+              </a>
+              <p className="text-[11px] text-faint">
+                {attendees.length > 0
+                  ? `${attendees.length} of ${members.length} have an email on file and will be invited.`
+                  : 'Nobody has an email on file, so the invite goes out with no attendees.'}
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="rounded-xl border border-line bg-panel p-4">
+        <h2 className="text-[13px] font-medium">Agenda</h2>
+        <p className="mt-1 text-[12px] text-muted">
+          Built from this brief and what the team is still missing.
+        </p>
+        <ol className="mt-3 space-y-2">
+          {agenda.map((item, i) => (
+            <li key={i} className="flex gap-2.5 text-[13px]">
+              <span className="text-faint tabular-nums">{i + 1}.</span>
+              <span className="text-ink">{item}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
     </div>
   );
 }

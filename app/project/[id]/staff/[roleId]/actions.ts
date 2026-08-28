@@ -50,3 +50,29 @@ export async function inviteAction(formData: FormData) {
 
   redirect(`/project/${projectId}?invited=${token}${emailed ? '&emailed=1' : ''}`);
 }
+
+/**
+ * Picking, not asking.
+ *
+ * The same ranking serves two arrivals. From the workspace, choosing someone
+ * means inviting them then and there. From step four, it means swapping one
+ * card — the person a colleague declined for the next best one — and going
+ * back to the list, where the note gets written and everything goes out
+ * together. Sending here instead would fire an invitation with no message
+ * attached and drop them out of the flow they were halfway through.
+ */
+export async function chooseForInviteAction(formData: FormData) {
+  const projectId = String(formData.get('projectId') ?? '');
+  const roleId = String(formData.get('roleId') ?? '');
+  const personId = String(formData.get('personId') ?? '');
+
+  if (!projectId || !roleId || !personId) return;
+
+  // Replace this seat's pick and keep every other one intact.
+  const kept = String(formData.get('picks') ?? '')
+    .split(',')
+    .filter((p) => p.includes(':') && !p.startsWith(`${roleId}:`));
+  const picks = [...kept, `${roleId}:${personId}`].join(',');
+
+  redirect(`/project/${projectId}/invite?picks=${encodeURIComponent(picks)}`);
+}

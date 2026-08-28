@@ -9,13 +9,12 @@ import { getPerson } from '@/lib/data/people';
 import { listProjectCards } from '@/lib/data/projects';
 import { getCurrentUser } from '@/lib/supabase/server';
 
-import { createOrgAction } from './actions';
 import { deleteProjectAction } from '../project/[id]/actions';
 
 /**
  * The signed-in home, and the answer to "what am I looking at".
  *
- * It used to be a bare create-organisation form that redirected straight to
+ * It used to be a bare create-workspace form that redirected straight to
  * the roster the moment you had an org — which meant that after day one
  * there was no home at all, and every route was reachable only by knowing
  * its URL. This answers the questions a person actually arrives with: what
@@ -40,12 +39,12 @@ export default async function AppHome() {
       notices={notices}
       tabs={[
         { href: '/app', label: 'Home' },
-        { href: `/app/org/${org.slug}`, label: 'Organisation' },
+        { href: `/app/org/${org.slug}`, label: 'People' },
       ]}
       active="/app"
       action={
         <Link
-          href={`/app/org/${org.slug}/new`}
+          href="/app/new"
           className="rounded-full bg-accent px-3 py-1.5 text-[12px] font-semibold text-canvas hover:opacity-90"
         >
           New project
@@ -86,7 +85,7 @@ export default async function AppHome() {
 
       {!me && (
         <Link
-          href={`/app/org/${org.slug}/me`}
+          href="/onboarding/you"
           className="mt-6 flex items-center gap-3 rounded-xl border border-line border-l-2 border-l-accent bg-panel px-4 py-3.5 transition-colors hover:border-accent"
         >
           <span className="min-w-0 flex-1">
@@ -160,27 +159,36 @@ export default async function AppHome() {
                 </span>
               </Link>
 
-              <form
-                action={deleteProjectAction}
-                className="absolute top-4 right-4 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
-              >
-                <input type="hidden" name="projectId" value={p.id} />
-                <input type="hidden" name="orgSlug" value={org.slug} />
-                <button
-                  type="submit"
-                  aria-label={'Delete ' + (p.name || 'project')}
-                  className="text-[11px] text-faint transition-colors hover:text-warn"
+              {/* Hidden until the tile is hovered or something in it takes
+                  focus: every project needs these, none of them needs to be
+                  shouting while you are choosing which project to open. */}
+              <div className="absolute top-4 right-4 flex items-center gap-2.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                <Link
+                  href={`/project/${p.id}?tab=setup`}
+                  aria-label={'Edit ' + (p.name || 'project')}
+                  className="text-[11px] text-faint transition-colors hover:text-accent"
                 >
-                  Delete
-                </button>
-              </form>
+                  Edit
+                </Link>
+                <form action={deleteProjectAction}>
+                  <input type="hidden" name="projectId" value={p.id} />
+                  <input type="hidden" name="orgSlug" value={org.slug} />
+                  <button
+                    type="submit"
+                    aria-label={'Delete ' + (p.name || 'project')}
+                    className="text-[11px] text-faint transition-colors hover:text-warn"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </div>
             </li>
           );
         })}
 
         <li className="min-w-0">
           <Link
-            href="/"
+            href="/app/new"
             className="flex h-full min-h-[180px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-line-strong p-5 text-muted transition-colors hover:border-accent hover:text-accent"
           >
             <span aria-hidden className="text-[26px] leading-none">+</span>
@@ -194,33 +202,37 @@ export default async function AppHome() {
   );
 }
 
-/** No organisation yet — one field, one button, nothing else on screen. */
+/**
+ * No workspace yet.
+ *
+ * This used to be "Step 1 of 2" with a form on it, which turned signing up
+ * into a two-screen gate before anyone had seen anything. Setup is its own
+ * flow now, entered by choice — so this is a door, not a form.
+ */
 function Onboard({ email }: { email: string }) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-16">
-      <p className="text-[11px] tracking-wide text-faint uppercase">Step 1 of 2</p>
-      <h1 className="mt-1 font-display text-2xl font-bold text-ink">Name your organisation</h1>
+    <main className="pm-grain mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-16">
+      <Link href="/" className="font-display text-[15px] font-bold tracking-tight">
+        Project<span className="text-accent">Match</span>
+      </Link>
+
+      <h1 className="mt-8 font-display text-2xl font-bold text-ink">You&rsquo;re in.</h1>
       <p className="mt-2 text-sm text-muted">
-        The people you build teams from. Signed in as {email}.
+        Three short questions and you can start building teams. Signed in as {email}.
       </p>
 
-      <form action={createOrgAction} className="mt-6 space-y-3">
-        <input
-          type="text"
-          name="name"
-          required
-          autoFocus
-          placeholder="Acme Inc."
-          aria-label="Organisation name"
-          className="w-full rounded-full border border-line bg-panel px-4 py-2.5 text-[14px] outline-none transition-colors focus:border-accent"
-        />
-        <button
-          type="submit"
-          className="w-full rounded-lg bg-accent px-4 py-3 text-[14px] font-semibold text-canvas transition-opacity hover:opacity-90"
-        >
-          Continue
-        </button>
-      </form>
+      <Link
+        href="/onboarding"
+        className="mt-6 block rounded-xl bg-accent px-4 py-3 text-center text-[14px] font-semibold text-canvas transition-opacity hover:opacity-90"
+      >
+        Set up
+      </Link>
+      <Link
+        href="/"
+        className="mt-3 text-center text-[12px] text-faint transition-colors hover:text-ink"
+      >
+        Look around first
+      </Link>
     </main>
   );
 }

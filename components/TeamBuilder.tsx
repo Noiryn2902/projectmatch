@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Brief, Company, Person, ScopeFilter, SortMode, TeamState } from '@/lib/types';
 import { autoFill, membersOf, rankCandidates } from '@/lib/engine/assemble';
@@ -19,6 +20,7 @@ import BigCta from './BigCta';
 import SiteFooter from './SiteFooter';
 import Directory from './Directory';
 import SiteNav, { type Viewer } from './SiteNav';
+import StepBar from './StepBar';
 import { lockTeamAction } from '@/app/actions';
 
 const SORTS: { id: SortMode; label: string; short: string }[] = [
@@ -40,11 +42,14 @@ export default function TeamBuilder({
   companies,
   initialBrief,
   viewer,
+  real = false,
 }: {
   people: Person[];
   companies: Company[];
   initialBrief: Brief;
   viewer?: Viewer | null;
+  /** True when the pool is a real org roster rather than the demo sixty. */
+  real?: boolean;
 }) {
   // Nothing but the input shows until the user has actually asked for something.
   const [started, setStarted] = useState(false);
@@ -392,14 +397,16 @@ export default function TeamBuilder({
     <div className="pm-grain min-h-screen">
       <header className="sticky top-0 z-20 border-b border-line bg-canvas/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1180px] items-center gap-3 px-5 py-3 sm:gap-6">
-          <button
-            type="button"
-            onClick={() => setStarted(false)}
-            aria-label="Start a new project brief"
+          {/* Home, like every other logo anywhere. It used to reset the
+              builder instead, which is a reasonable thing to want and an
+              unreasonable thing to hide behind a wordmark — "Edit brief"
+              below does that job where you can see it. */}
+          <Link
+            href="/"
             className="font-display text-[17px] font-bold tracking-tight whitespace-nowrap"
           >
             Project<span className="text-accent">Match</span>
-          </button>
+          </Link>
 
           <div className="min-w-0 flex-1">
             <input
@@ -413,6 +420,15 @@ export default function TeamBuilder({
           </div>
 
         </div>
+
+        {real && (
+          <div className="mx-auto max-w-[1180px]">
+            <StepBar
+              step={2}
+              back={{ href: '/app', label: 'All projects' }}
+            />
+          </div>
+        )}
       </header>
 
       <main className="mx-auto max-w-[1180px] px-5 py-6">
@@ -638,12 +654,18 @@ export default function TeamBuilder({
             {/* The roles on screen, so the project you land on is the one you
                 were just looking at rather than a re-parse of the text. */}
             <input type="hidden" name="roles" value={JSON.stringify(brief.roles)} />
+            {/* The team you actually picked, carried through to the asking
+                step. Only meaningful when the pool is your own roster —
+                on the public demo these ids belong to fictional people and
+                the server drops them. */}
+            <input type="hidden" name="team" value={JSON.stringify(team)} />
+            <input type="hidden" name="real" value={real ? '1' : ''} />
             <button
               type="submit"
               disabled={health.filled === 0}
               className="rounded-xl bg-accent px-5 py-2.5 text-[14px] font-semibold text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              Build this for real →
+              {real ? 'Make team →' : 'Build this for real →'}
             </button>
           </form>
         </div>
